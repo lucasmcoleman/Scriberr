@@ -2192,11 +2192,11 @@ body[data-notes-pane-dragging="true"] {
   height: 100vh;
   overflow: hidden;
   border-right: 0;
-  background: rgba(255, 253, 248, 0.74);
+  background: linear-gradient(90deg, rgba(255, 253, 248, 0.64), rgba(255, 253, 248, 0.5));
   box-shadow:
-    16px 0 42px rgba(16, 15, 15, 0.05),
-    4px 0 12px rgba(16, 15, 15, 0.025),
-    inset -1px 0 rgba(255, 255, 255, 0.68);
+    10px 0 34px rgba(16, 15, 15, 0.032),
+    2px 0 10px rgba(16, 15, 15, 0.018),
+    inset -1px 0 rgba(255, 255, 255, 0.42);
   padding: var(--scr-space-4) var(--scr-space-2);
   backdrop-filter: blur(24px);
   transition: width 260ms cubic-bezier(0.16, 1, 0.3, 1), padding 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease;
@@ -2212,7 +2212,7 @@ body[data-notes-pane-dragging="true"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--scr-space-3);
+  gap: 0;
   min-height: 64px;
   margin-bottom: var(--scr-space-5);
   padding: 0;
@@ -2222,6 +2222,7 @@ body[data-notes-pane-dragging="true"] {
 .scr-sidebar:hover .scr-logo-row,
 .scr-sidebar:focus-within .scr-logo-row {
   justify-content: flex-start;
+  gap: var(--scr-space-3);
   padding: 0 var(--scr-space-2);
 }
 
@@ -2235,7 +2236,9 @@ body[data-notes-pane-dragging="true"] {
 
 .scr-logo-text {
   width: 108px;
+  flex: 0 0 0;
   max-width: 0;
+  overflow: hidden;
   filter: var(--scr-logo-filter, none);
   opacity: 0;
   transition: max-width 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease;
@@ -2243,6 +2246,7 @@ body[data-notes-pane-dragging="true"] {
 
 .scr-sidebar:hover .scr-logo-text,
 .scr-sidebar:focus-within .scr-logo-text {
+  flex-basis: 108px;
   max-width: 108px;
   opacity: 1;
 }
@@ -2255,9 +2259,16 @@ body[data-notes-pane-dragging="true"] {
 .scr-nav {
   display: grid;
   gap: var(--scr-space-1);
+  justify-items: center;
+}
+
+.scr-sidebar:hover .scr-nav,
+.scr-sidebar:focus-within .scr-nav {
+  justify-items: stretch;
 }
 
 .scr-nav-eyebrow {
+  display: none;
   margin: 0 0 var(--scr-space-2);
   padding: 0 var(--scr-space-2);
   color: var(--scr-color-neutral-400);
@@ -2272,21 +2283,30 @@ body[data-notes-pane-dragging="true"] {
 
 .scr-sidebar:hover .scr-nav-eyebrow,
 .scr-sidebar:focus-within .scr-nav-eyebrow {
+  display: block;
   opacity: 1;
 }
 
 .scr-nav-section {
   display: grid;
   gap: var(--scr-space-1);
+  width: 40px;
+}
+
+.scr-sidebar:hover .scr-nav-section,
+.scr-sidebar:focus-within .scr-nav-section {
+  width: 100%;
 }
 
 .scr-nav-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--scr-space-3);
-  width: 100%;
+  gap: 0;
+  width: 40px;
+  margin-inline: auto;
   min-height: 40px;
+  box-sizing: border-box;
   border-radius: 12px;
   border: 0;
   padding: 0;
@@ -2300,10 +2320,15 @@ body[data-notes-pane-dragging="true"] {
 .scr-sidebar:hover .scr-nav-item,
 .scr-sidebar:focus-within .scr-nav-item {
   justify-content: flex-start;
+  gap: var(--scr-space-3);
+  width: 100%;
+  margin-inline: 0;
   padding: 0 var(--scr-space-3);
 }
 
 .scr-nav-label {
+  width: 0;
+  flex: 0 0 0;
   max-width: 0;
   overflow: hidden;
   opacity: 0;
@@ -2313,6 +2338,8 @@ body[data-notes-pane-dragging="true"] {
 
 .scr-sidebar:hover .scr-nav-label,
 .scr-sidebar:focus-within .scr-nav-label {
+  width: auto;
+  flex: 0 1 auto;
   max-width: 150px;
   opacity: 1;
 }
@@ -2391,7 +2418,7 @@ body[data-notes-pane-dragging="true"] {
   width: 100%;
   align-items: center;
   justify-content: center;
-  gap: var(--scr-space-2);
+  gap: 0;
   min-height: 48px;
   border: 0;
   border-radius: var(--scr-radius-sm);
@@ -2410,6 +2437,7 @@ body[data-notes-pane-dragging="true"] {
 .scr-sidebar:hover .scr-nav-recording,
 .scr-sidebar:focus-within .scr-nav-recording {
   justify-content: flex-start;
+  gap: var(--scr-space-2);
   min-height: 48px;
   padding: var(--scr-space-2);
 }
@@ -3066,7 +3094,7 @@ body[data-notes-pane-dragging="true"] {
 
 .dark .scr-sidebar {
   border-right: 0;
-  background: rgba(255, 253, 248, 0.74);
+  background: linear-gradient(90deg, rgba(255, 253, 248, 0.64), rgba(255, 253, 248, 0.5));
 }
 
 .dark .scr-nav-item[data-active="true"],
