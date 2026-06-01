@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
-import { MessageCircle, Mic2, PanelRightClose, PanelRightOpen, Send, Trash2 } from "lucide-react";
+import { useEffect, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent } from "react";
+import { GripHorizontal, MessageCircle, MessageSquareText, Mic2, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TranscriptChatPanel } from "@/features/transcription/components/TranscriptChatPanel";
@@ -23,6 +23,40 @@ type TranscriptNotesSidebarProps = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
+type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+type PanePosition = { x: number; y: number };
+
+const assistantHeightStorageKey = "scriberr.audioDetail.assistantHeight";
+const assistantPositionStorageKey = "scriberr.audioDetail.assistantPosition";
+
+function clampPaneHeight(height: number) {
+  if (typeof window === "undefined") return Math.min(Math.max(Math.round(height), 420), 720);
+  const maxHeight = Math.max(420, Math.min(760, window.innerHeight - 112));
+  return Math.min(Math.max(Math.round(height), 420), maxHeight);
+}
+
+function getStoredPaneHeight() {
+  if (typeof window === "undefined") return 680;
+  const storedHeight = Number(window.localStorage.getItem(assistantHeightStorageKey));
+  if (Number.isFinite(storedHeight) && storedHeight > 0) return clampPaneHeight(storedHeight);
+  return clampPaneHeight(680);
+}
+
+function getStoredPanePosition(): PanePosition {
+  if (typeof window === "undefined") return { x: 0, y: 0 };
+  try {
+    const rawPosition = window.localStorage.getItem(assistantPositionStorageKey);
+    if (!rawPosition) return { x: 0, y: 0 };
+    const parsed = JSON.parse(rawPosition) as Partial<PanePosition>;
+    const x = Number(parsed.x);
+    const y = Number(parsed.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return { x: 0, y: 0 };
+    return { x, y };
+  } catch {
+    return { x: 0, y: 0 };
+  }
+}
+
 export function TranscriptNotesSidebar({
   notes,
   parentTranscriptionId,
@@ -42,19 +76,45 @@ export function TranscriptNotesSidebar({
 }: TranscriptNotesSidebarProps) {
   const [activeReplyNoteId, setActiveReplyNoteId] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<"chat" | "notes">("chat");
-  const [dragState, setDragState] = useState<{ startX: number; startWidth: number } | null>(null);
+  const [paneHeight, setPaneHeight] = useState(getStoredPaneHeight);
+  const [resizeState, setResizeState] = useState<{
+    corner: ResizeCorner;
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+    originY: number;
+  } | null>(null);
+  const [dragState, setDragState] = useState<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const [position, setPosition] = useState<PanePosition>(getStoredPanePosition);
 
   useEffect(() => {
-    if (!dragState) return;
+    window.localStorage.setItem(assistantHeightStorageKey, String(paneHeight));
+  }, [paneHeight]);
+
+  useEffect(() => {
+    window.localStorage.setItem(assistantPositionStorageKey, JSON.stringify(position));
+  }, [position]);
+
+  useEffect(() => {
+    if (!resizeState) return;
 
     const handlePointerMove = (event: globalThis.PointerEvent) => {
-      onWidthChange(dragState.startWidth + dragState.startX - event.clientX);
+      const deltaX = event.clientX - resizeState.startX;
+      const deltaY = event.clientY - resizeState.startY;
+      const isLeft = resizeState.corner.includes("left");
+      const isTop = resizeState.corner.includes("top");
+      onWidthChange(resizeState.startWidth + (isLeft ? -deltaX : deltaX));
+      setPaneHeight(clampPaneHeight(resizeState.startHeight + (isTop ? -deltaY : deltaY)));
+      if (isTop) {
+        setPosition((current) => ({ ...current, y: resizeState.originY + deltaY }));
+      }
     };
     const handlePointerUp = () => {
-      setDragState(null);
+      setResizeState(null);
     };
 
-    document.body.dataset.notesSidebarResizing = "true";
+    document.body.dataset.notesSidebarResizing = resizeState.corner;
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp, { once: true });
     window.addEventListener("pointercancel", handlePointerUp, { once: true });
@@ -65,12 +125,52 @@ export function TranscriptNotesSidebar({
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
     };
-  }, [dragState, onWidthChange]);
+  }, [resizeState, onWidthChange]);
 
-  const handleResizePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+  useEffect(() => {
+    if (!dragState) return;
+
+    const handlePointerMove = (event: globalThis.PointerEvent) => {
+      const nextX = dragState.originX + event.clientX - dragState.startX;
+      const nextY = dragState.originY + event.clientY - dragState.startY;
+      const viewportInset = 16;
+      const baseRight = 40;
+      const baseTop = 88;
+      const estimatedWidth = Math.min(width, window.innerWidth - viewportInset * 2);
+      const estimatedHeight = Math.min(paneHeight, window.innerHeight - viewportInset * 2);
+      setPosition({
+        x: Math.min(Math.max(nextX, -window.innerWidth + estimatedWidth + viewportInset + baseRight), baseRight - viewportInset),
+        y: Math.min(Math.max(nextY, viewportInset - baseTop), window.innerHeight - estimatedHeight - viewportInset - baseTop),
+      });
+    };
+    const handlePointerUp = () => {
+      setDragState(null);
+    };
+
+    document.body.dataset.notesPaneDragging = "true";
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp, { once: true });
+    window.addEventListener("pointercancel", handlePointerUp, { once: true });
+
+    return () => {
+      delete document.body.dataset.notesPaneDragging;
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [dragState, paneHeight, width]);
+
+  const handleResizePointerDown = (event: PointerEvent<HTMLDivElement>, corner: ResizeCorner) => {
     if (!isOpen) return;
     event.preventDefault();
-    setDragState({ startX: event.clientX, startWidth: width });
+    setResizeState({
+      corner,
+      startX: event.clientX,
+      startY: event.clientY,
+      startWidth: width,
+      startHeight: paneHeight,
+      originY: position.y,
+    });
   };
 
   const handleResizeKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -78,23 +178,24 @@ export function TranscriptNotesSidebar({
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const step = event.shiftKey ? 48 : 16;
-    onWidthChange(width + (event.key === "ArrowLeft" ? step : -step));
+    onWidthChange(width + (event.key === "ArrowRight" ? step : -step));
   };
 
-  return (
-    <aside className="scr-transcript-notes-sidebar" data-open={isOpen} aria-label="Transcript notes">
-      {isOpen ? (
-        <div
-          className="scr-transcript-notes-resize-handle"
-          role="separator"
-          aria-label="Resize notes sidebar"
-          aria-orientation="vertical"
-          aria-valuenow={Math.round(width)}
-          tabIndex={0}
-          onPointerDown={handleResizePointerDown}
-          onKeyDown={handleResizeKeyDown}
-        />
-      ) : null}
+  const handleDragPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!isOpen) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button, a, input, textarea, select, [role='button']")) return;
+    event.preventDefault();
+    setDragState({
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: position.x,
+      originY: position.y,
+    });
+  };
+
+  if (!isOpen) {
+    return (
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -102,66 +203,100 @@ export function TranscriptNotesSidebar({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={isOpen ? "Collapse notes" : "Open notes"}
-            aria-expanded={isOpen}
-            onClick={() => onOpenChange(!isOpen)}
+            aria-label="Open chat and notes"
+            aria-expanded={false}
+            onClick={() => onOpenChange(true)}
           >
-            {isOpen ? <PanelRightClose size={17} aria-hidden="true" /> : <PanelRightOpen size={17} aria-hidden="true" />}
+            <MessageSquareText size={18} aria-hidden="true" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{isOpen ? "Collapse notes" : "Notes"}</TooltipContent>
+        <TooltipContent>Chat and notes</TooltipContent>
       </Tooltip>
+    );
+  }
 
-      {isOpen ? (
-        <div className="scr-transcript-notes-panel">
-          <nav className="scr-transcript-notes-tabs" aria-label="Detail sidebar">
-            <button type="button" data-active={activePanel === "chat" ? "true" : undefined} onClick={() => setActivePanel("chat")}>Chat</button>
-            <button type="button" data-active={activePanel === "notes" ? "true" : undefined} onClick={() => setActivePanel("notes")}>Notes</button>
+  return (
+    <aside
+      className="scr-transcript-notes-sidebar"
+      data-open="true"
+      aria-label="Transcript chat and notes"
+      style={{
+        "--scr-floating-pane-width": `${width}px`,
+        "--scr-floating-pane-height": `${paneHeight}px`,
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+      } as CSSProperties}
+    >
+      {(["top-left", "top-right", "bottom-left", "bottom-right"] as const).map((corner) => (
+        <div
+          className="scr-transcript-notes-resize-handle"
+          data-corner={corner}
+          key={corner}
+          role="separator"
+          aria-label="Resize chat and notes pane"
+          aria-valuenow={Math.round(width)}
+          tabIndex={corner === "bottom-right" ? 0 : -1}
+          onPointerDown={(event) => handleResizePointerDown(event, corner)}
+          onKeyDown={handleResizeKeyDown}
+        />
+      ))}
+      <div className="scr-transcript-notes-dragbar" onPointerDown={handleDragPointerDown}>
+        <GripHorizontal size={18} aria-hidden="true" />
+        <span>Assistant</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button
               className="scr-transcript-notes-close"
               type="button"
               variant="ghost"
               size="icon"
-              aria-label="Collapse notes"
+              aria-label="Close chat and notes"
               onClick={() => onOpenChange(false)}
             >
-              <PanelRightClose size={16} aria-hidden="true" />
+              <X size={16} aria-hidden="true" />
             </Button>
-          </nav>
+          </TooltipTrigger>
+          <TooltipContent>Close</TooltipContent>
+        </Tooltip>
+      </div>
 
-          {activePanel === "chat" ? (
-            <TranscriptChatPanel parentTranscriptionId={parentTranscriptionId} />
-          ) : (
-            <div className="scr-transcript-notes-list">
-              {isLoading ? <p className="scr-transcript-notes-status">Loading notes.</p> : null}
-              {isError ? <p className="scr-transcript-notes-status">Notes could not be loaded.</p> : null}
-              {!isLoading && !isError && notes.length === 0 ? (
-                <p className="scr-transcript-notes-status">No notes yet.</p>
-              ) : null}
-              {!isLoading && !isError ? notes.map((note) => (
-                <TranscriptNoteItem
-                  key={note.id}
-                  note={note}
-                  isReplyActive={activeReplyNoteId === note.id}
-                  isCreatingEntry={isCreatingEntry && activeReplyNoteId === note.id}
-                  isUpdatingEntry={isUpdatingEntry}
-                  isDeletingEntry={isDeletingEntry}
-                  onActivateReply={() => setActiveReplyNoteId(note.id)}
-                  onCancelReply={() => setActiveReplyNoteId(null)}
-                  onCreateEntry={async (content) => {
-                    setActiveReplyNoteId(note.id);
-                    await onCreateEntry(note.id, content);
-                    setActiveReplyNoteId(null);
-                  }}
-                  onUpdateEntry={onUpdateEntry}
-                  onDeleteEntry={onDeleteEntry}
-                  onSeekRequest={onSeekRequest}
-                />
-              )) : null}
-            </div>
-          )}
-        </div>
-      ) : null}
+      <div className="scr-transcript-notes-panel">
+        <nav className="scr-transcript-notes-tabs" aria-label="Detail pane">
+          <button type="button" data-active={activePanel === "chat" ? "true" : undefined} onClick={() => setActivePanel("chat")}>Chat</button>
+          <button type="button" data-active={activePanel === "notes" ? "true" : undefined} onClick={() => setActivePanel("notes")}>Notes</button>
+        </nav>
+
+        {activePanel === "chat" ? (
+          <TranscriptChatPanel parentTranscriptionId={parentTranscriptionId} />
+        ) : (
+          <div className="scr-transcript-notes-list">
+            {isLoading ? <p className="scr-transcript-notes-status">Loading notes.</p> : null}
+            {isError ? <p className="scr-transcript-notes-status">Notes could not be loaded.</p> : null}
+            {!isLoading && !isError && notes.length === 0 ? (
+              <p className="scr-transcript-notes-status">No notes yet.</p>
+            ) : null}
+            {!isLoading && !isError ? notes.map((note) => (
+              <TranscriptNoteItem
+                key={note.id}
+                note={note}
+                isReplyActive={activeReplyNoteId === note.id}
+                isCreatingEntry={isCreatingEntry && activeReplyNoteId === note.id}
+                isUpdatingEntry={isUpdatingEntry}
+                isDeletingEntry={isDeletingEntry}
+                onActivateReply={() => setActiveReplyNoteId(note.id)}
+                onCancelReply={() => setActiveReplyNoteId(null)}
+                onCreateEntry={async (content) => {
+                  setActiveReplyNoteId(note.id);
+                  await onCreateEntry(note.id, content);
+                  setActiveReplyNoteId(null);
+                }}
+                onUpdateEntry={onUpdateEntry}
+                onDeleteEntry={onDeleteEntry}
+                onSeekRequest={onSeekRequest}
+              />
+            )) : null}
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

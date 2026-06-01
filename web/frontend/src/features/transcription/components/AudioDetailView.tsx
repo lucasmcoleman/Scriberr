@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type ReactNode, type SyntheticEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { AlignJustify, CalendarDays, CheckSquare, Clock3, FileText, MoreHorizontal, Pause, Pencil, Play } from "lucide-react";
+import { AlignJustify, CalendarDays, CheckSquare, Clock3, FileText, MoreHorizontal, Pause, Play } from "lucide-react";
 import { Sidebar } from "@/features/home/components/HomePage";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useToast } from "@/components/ui/toast";
@@ -37,6 +37,8 @@ type AudioSeekRequest = {
 const notesSidebarMinWidth = 320;
 const notesSidebarDefaultMaxWidth = 720;
 const notesSidebarDefaultViewportRatio = 0.2;
+const notesSidebarOpenStorageKey = "scriberr.audioDetail.assistantOpen";
+const notesSidebarWidthStorageKey = "scriberr.audioDetail.assistantWidth";
 
 function clampNotesSidebarWidth(width: number) {
   const viewportMax = typeof window === "undefined" ? notesSidebarDefaultMaxWidth : Math.floor(window.innerWidth * 0.4);
@@ -46,7 +48,14 @@ function clampNotesSidebarWidth(width: number) {
 
 function getDefaultNotesSidebarWidth() {
   if (typeof window === "undefined") return 360;
+  const storedWidth = Number(window.localStorage.getItem(notesSidebarWidthStorageKey));
+  if (Number.isFinite(storedWidth) && storedWidth > 0) return clampNotesSidebarWidth(storedWidth);
   return clampNotesSidebarWidth(window.innerWidth * notesSidebarDefaultViewportRatio);
+}
+
+function getStoredNotesSidebarOpen() {
+  if (typeof window === "undefined") return true;
+  return window.localStorage.getItem(notesSidebarOpenStorageKey) !== "false";
 }
 
 export function AudioDetailView() {
@@ -57,7 +66,7 @@ export function AudioDetailView() {
   const [audioSeekRequest, setAudioSeekRequest] = useState<AudioSeekRequest | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
-  const [notesSidebarOpen, setNotesSidebarOpen] = useState(true);
+  const [notesSidebarOpen, setNotesSidebarOpen] = useState(getStoredNotesSidebarOpen);
   const [notesSidebarWidth, setNotesSidebarWidth] = useState(getDefaultNotesSidebarWidth);
   const playbackSync = useMemo(() => createPlaybackSync(), [audioId]);
   const fileQuery = useFile(audioId);
@@ -118,7 +127,14 @@ export function AudioDetailView() {
   }, [deleteNoteEntryMutation]);
 
   const handleNotesSidebarWidthChange = useCallback((width: number) => {
-    setNotesSidebarWidth(clampNotesSidebarWidth(width));
+    const nextWidth = clampNotesSidebarWidth(width);
+    setNotesSidebarWidth(nextWidth);
+    window.localStorage.setItem(notesSidebarWidthStorageKey, String(nextWidth));
+  }, []);
+
+  const handleNotesSidebarOpenChange = useCallback((isOpen: boolean) => {
+    setNotesSidebarOpen(isOpen);
+    window.localStorage.setItem(notesSidebarOpenStorageKey, String(isOpen));
   }, []);
 
   useEffect(() => {
@@ -250,13 +266,12 @@ export function AudioDetailView() {
 
               <div className="scr-audio-tabbar">
                 <button type="button" data-active={activeTab === "summary"} onClick={() => setActiveTab("summary")}>
+                  <AlignJustify size={14} aria-hidden="true" />
                   Summary
                 </button>
                 <button type="button" data-active={activeTab === "transcript"} onClick={() => setActiveTab("transcript")}>
+                  <FileText size={14} aria-hidden="true" />
                   Transcript
-                </button>
-                <button className="scr-audio-edit-icon" type="button" aria-label="Edit transcript" title="Edit transcript" disabled>
-                  <Pencil size={14} aria-hidden="true" />
                 </button>
               </div>
 
@@ -301,7 +316,7 @@ export function AudioDetailView() {
                   isLoading={transcriptionsQuery.isLoading || transcriptQuery.isLoading}
                   isError={transcriptionsQuery.isError || transcriptQuery.isError}
                   onSeekRequest={handleNoteSeekRequest}
-                  onNoteSaved={() => setNotesSidebarOpen(true)}
+                  onNoteSaved={() => handleNotesSidebarOpenChange(true)}
                 />
               )}
             </article>
@@ -320,7 +335,7 @@ export function AudioDetailView() {
               onUpdateEntry={handleUpdateNoteEntry}
               onDeleteEntry={handleDeleteNoteEntry}
               onSeekRequest={handleNoteSeekRequest}
-              onOpenChange={setNotesSidebarOpen}
+              onOpenChange={handleNotesSidebarOpenChange}
             />
           </div>
           <StreamingAudioPlayer
