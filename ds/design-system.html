@@ -1,0 +1,897 @@
+<!-- Copyright 2026 Anthropic PBC · SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scriberr UI - Flexoki-Inspired Glass Design System</title>
+<style>
+  @font-face {
+    font-family: "Iosevka Aile Web";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../web/frontend/public/fonts/iosevka-aile/IosevkaAile-Regular.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Iosevka Aile Web";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("../web/frontend/public/fonts/iosevka-aile/IosevkaAile-Medium.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Iosevka Aile Web";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("../web/frontend/public/fonts/iosevka-aile/IosevkaAile-SemiBold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Iosevka Aile Web";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("../web/frontend/public/fonts/iosevka-aile/IosevkaAile-Bold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Iosevka Etoile Web";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../web/frontend/public/fonts/iosevka-etoile/IosevkaEtoile-Regular.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Iosevka Etoile Web";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("../web/frontend/public/fonts/iosevka-etoile/IosevkaEtoile-Medium.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Iosevka Etoile Web";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("../web/frontend/public/fonts/iosevka-etoile/IosevkaEtoile-SemiBold.woff2") format("woff2");
+  }
+
+  @font-face {
+    font-family: "Iosevka Etoile Web";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("../web/frontend/public/fonts/iosevka-etoile/IosevkaEtoile-Bold.woff2") format("woff2");
+  }
+
+  :root {
+    color-scheme: light;
+
+    /* Flexoki-inspired, adapted for Scriberr's glassy app UI. */
+    --paper: #f8f5ec;
+    --paper-soft: #f1ecdf;
+    --paper-warm: #f0eadc;
+    --surface: #fffdf8;
+    --surface-raised: #fffef9;
+    --surface-tint: #f0eadc;
+    --ink: #100f0f;
+    --ink-soft: #282726;
+    --text: #343331;
+    --text-muted: #6f6e69;
+    --text-faint: #878580;
+    --line-soft: #e3ded2;
+    --line: #d6d0c3;
+    --line-strong: #c7c1b5;
+
+    --red: #af3029;
+    --orange: #bc5215;
+    --yellow: #ad8301;
+    --green: #66800b;
+    --cyan: #24837b;
+    --blue: #205ea6;
+    --purple: #5e409d;
+    --magenta: #a02f6f;
+
+    --accent: #c9452b;
+    --accent-hover: #a53a26;
+    --accent-soft: #f6ded2;
+    --selection: #f3d7b5;
+    --focus: rgba(32, 94, 166, 0.22);
+    --glass: rgba(255, 253, 248, 0.74);
+    --glass-strong: rgba(255, 254, 249, 0.84);
+    --glass-muted: rgba(240, 234, 220, 0.58);
+
+    --serif: "Iosevka Etoile Web", ui-serif, Georgia, serif;
+    --sans: "Iosevka Aile Web", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    --r-xs: 4px;
+    --r-sm: 7px;
+    --r-md: 10px;
+    --r-lg: 14px;
+
+    --shadow-sm: 0 8px 20px rgba(16, 15, 15, 0.06), 0 1px 2px rgba(16, 15, 15, 0.04), inset 0 1px rgba(255, 255, 255, 0.72);
+    --shadow-md: 0 18px 42px rgba(16, 15, 15, 0.07), 0 4px 12px rgba(16, 15, 15, 0.04), inset 0 1px rgba(255, 255, 255, 0.82);
+    --shadow-lg: 0 24px 54px rgba(16, 15, 15, 0.12), 0 6px 16px rgba(16, 15, 15, 0.065), inset 0 1px rgba(255, 255, 255, 0.82);
+    --shadow-sidebar: 16px 0 42px rgba(16, 15, 15, 0.05), 4px 0 12px rgba(16, 15, 15, 0.025), inset -1px 0 rgba(255, 255, 255, 0.68);
+    --hairline: inset 0 1px rgba(255, 255, 255, 0.72);
+    --border: 0;
+  }
+
+  * { box-sizing: border-box; }
+  ::selection { background: var(--selection); color: var(--ink); }
+
+  body {
+    margin: 0;
+    padding: 48px 22px 96px;
+    background:
+      linear-gradient(180deg, rgba(255, 253, 248, 0.9), rgba(248, 245, 236, 0.96) 340px),
+      radial-gradient(circle at 18% 0%, rgba(188, 82, 21, 0.035), transparent 340px),
+      var(--paper);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.58;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
+  header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 28px;
+    margin-bottom: 52px;
+  }
+
+  header h1 {
+    margin: 0 0 10px;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 46px;
+    font-weight: 500;
+    line-height: 1.04;
+    letter-spacing: 0;
+  }
+
+  header .sub {
+    max-width: 720px;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 15px;
+  }
+
+  header code,
+  .token,
+  .hex,
+  .meta,
+  .eyebrow,
+  .component-name,
+  .space-label,
+  .lbl {
+    font-family: var(--mono);
+  }
+
+  header code {
+    border: 0;
+    border-radius: var(--r-xs);
+    background: var(--glass-muted);
+    box-shadow: var(--hairline);
+    color: var(--ink-soft);
+    padding: 1px 5px;
+    font-size: 13px;
+  }
+
+  .mode-card {
+    min-width: 230px;
+    border-radius: var(--r-lg);
+    background: var(--glass);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px);
+    padding: 14px;
+  }
+
+  .segmented {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: var(--glass-muted);
+    box-shadow: var(--hairline);
+  }
+
+  .segment {
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    height: 30px;
+  }
+
+  .segment.active {
+    background: var(--glass-strong);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(12px);
+  }
+
+  section { margin-bottom: 66px; }
+
+  h2 {
+    margin: 0 0 9px;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 27px;
+    font-weight: 500;
+    line-height: 1.18;
+    letter-spacing: 0;
+  }
+
+  .section-note {
+    max-width: 680px;
+    margin: 0 0 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .rule {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(16, 15, 15, 0.08), transparent);
+    margin: 0 0 26px;
+  }
+
+  .swatch-group { margin-bottom: 30px; }
+
+  .swatch-group-label,
+  .eyebrow,
+  .component-name {
+    margin-bottom: 12px;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+    gap: 18px;
+  }
+
+  .swatch {
+    min-width: 0;
+  }
+
+  .chip {
+    width: 100%;
+    height: 68px;
+    margin-bottom: 9px;
+    border-radius: var(--r-sm);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .chip.no-border { box-shadow: none; }
+
+  .hex {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .token {
+    display: block;
+    color: var(--text-faint);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .type-card,
+  .panel,
+  .component-stage,
+  .spacing-ruler {
+    border-radius: var(--r-lg);
+    background: var(--glass);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(18px);
+  }
+
+  .type-card {
+    overflow: hidden;
+  }
+
+  .type-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 17px 20px;
+    box-shadow: inset 0 -1px rgba(16, 15, 15, 0.055);
+    background: rgba(255, 254, 249, 0.42);
+  }
+
+  .type-head strong {
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 650;
+  }
+
+  .type-head span {
+    color: var(--text-faint);
+    font-size: 13px;
+  }
+
+  .type-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 22px;
+    padding: 18px 20px;
+    box-shadow: inset 0 -1px rgba(16, 15, 15, 0.045);
+  }
+
+  .type-row:last-child { box-shadow: none; }
+
+  .type-specimen {
+    min-width: 0;
+    color: var(--ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta {
+    color: var(--text-faint);
+    font-size: 11px;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .serif-demo { font-family: var(--serif); }
+  .sans-demo { font-family: var(--sans); }
+  .t-display { font-size: 44px; line-height: 1.05; font-weight: 500; }
+  .t-h1 { font-size: 31px; line-height: 1.16; font-weight: 520; }
+  .t-h2 { font-size: 23px; line-height: 1.28; font-weight: 540; }
+  .t-body { font-size: 16px; line-height: 1.65; font-weight: 400; white-space: normal; }
+  .t-small { font-size: 14px; line-height: 1.55; font-weight: 430; white-space: normal; }
+  .t-caption { color: var(--text-muted); font-size: 12px; line-height: 1.45; font-weight: 600; }
+
+  .prose-preview {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    min-height: 420px;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    background: rgba(255, 253, 248, 0.74);
+    box-shadow: var(--shadow-sidebar);
+    backdrop-filter: blur(24px);
+    padding: 18px;
+  }
+
+  .search {
+    width: 100%;
+    height: 36px;
+    margin-bottom: 16px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: rgba(255, 253, 248, 0.72);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    outline: none;
+    padding: 0 11px;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px);
+  }
+
+  .note-link {
+    display: block;
+    padding: 10px 11px;
+    border-radius: var(--r-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .note-link strong {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .note-link span {
+    display: block;
+    margin-top: 3px;
+    color: var(--text-faint);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .note-link.active {
+    background: var(--glass-strong);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(14px);
+  }
+
+  .editor {
+    padding: 34px 42px 42px;
+    background: rgba(255, 253, 248, 0.56);
+  }
+
+  .editor h3 {
+    margin: 0 0 10px;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 500;
+    line-height: 1.1;
+  }
+
+  .editor .byline {
+    margin: 0 0 26px;
+    color: var(--text-faint);
+    font-size: 13px;
+  }
+
+  .editor p {
+    max-width: 690px;
+    margin: 0 0 18px;
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.72;
+  }
+
+  body[data-font="sans"] .editor h3,
+  body[data-font="sans"] .editor p {
+    font-family: var(--sans);
+  }
+
+  .callout {
+    max-width: 690px;
+    margin: 24px 0;
+    padding: 14px 16px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: rgba(232, 240, 245, 0.72);
+    color: #163b62;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(12px);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .spacing-ruler {
+    display: flex;
+    align-items: flex-end;
+    gap: 28px;
+    padding: 28px 24px;
+    overflow-x: auto;
+  }
+
+  .space-token {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .space-bar {
+    height: 14px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--orange), var(--red));
+  }
+
+  .space-label {
+    color: var(--ink-soft);
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .space-label span {
+    display: block;
+    color: var(--text-faint);
+  }
+
+  .token-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 26px;
+  }
+
+  .radius-card,
+  .shadow-card {
+    display: flex;
+    align-items: flex-end;
+    padding: 12px 14px;
+    background: var(--glass);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(14px);
+  }
+
+  .radius-card {
+    width: 128px;
+    height: 88px;
+  }
+
+  .shadow-card {
+    width: 178px;
+    height: 98px;
+    border-radius: var(--r-lg);
+  }
+
+  .lbl {
+    color: var(--ink-soft);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .lbl span {
+    display: block;
+    color: var(--text-faint);
+  }
+
+  .component { margin-bottom: 30px; }
+
+  .component-stage {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    padding: 22px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 15px;
+    border: 0;
+    border-radius: var(--r-sm);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+  }
+
+  .btn:hover { transform: translateY(-1px); }
+  .btn:focus-visible,
+  .input:focus,
+  .search:focus {
+    box-shadow: 0 0 0 3px var(--focus);
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fffaf2;
+    box-shadow: 0 10px 24px rgba(175, 48, 41, 0.2);
+  }
+
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--glass-strong); color: var(--ink-soft); box-shadow: var(--shadow-sm); backdrop-filter: blur(14px); }
+  .btn-secondary:hover { background: rgba(255, 254, 249, 0.9); }
+  .btn-ghost { background: transparent; color: var(--text-muted); }
+  .btn-ghost:hover { background: var(--glass-muted); color: var(--ink-soft); box-shadow: var(--hairline); }
+  .btn-danger { background: #f4d7d2; color: var(--red); box-shadow: var(--shadow-sm); }
+  .btn-danger:hover { background: #edc6bf; }
+
+  .input {
+    width: 260px;
+    height: 38px;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: var(--glass-strong);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    outline: none;
+    padding: 0 12px;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(14px);
+    transition: box-shadow 0.14s ease, background 0.14s ease;
+  }
+
+  .input::placeholder,
+  .search::placeholder {
+    color: var(--text-faint);
+  }
+
+  .checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+    font-size: 14px;
+    user-select: none;
+    cursor: pointer;
+  }
+
+  .checkbox input {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    appearance: none;
+    border: 0;
+    border-radius: 5px;
+    background: var(--glass-strong);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: background 0.14s ease, box-shadow 0.14s ease;
+  }
+
+  .checkbox input:checked {
+    background: var(--green);
+  }
+
+  .checkbox input:checked::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 5px;
+    height: 9px;
+    border: solid #fffdf4;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    height: 23px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .badge-neutral { background: var(--glass-muted); color: var(--text-muted); box-shadow: var(--shadow-sm); }
+  .badge-accent { background: var(--accent-soft); color: var(--red); box-shadow: var(--shadow-sm); }
+  .badge-success { background: #e9edcf; color: #4b6406; box-shadow: var(--shadow-sm); }
+  .badge-warning { background: #f3e8c7; color: #805f00; box-shadow: var(--shadow-sm); }
+  .badge-info { background: #e4edf5; color: var(--blue); box-shadow: var(--shadow-sm); }
+
+  @media (max-width: 760px) {
+    body { padding: 30px 16px 72px; }
+    header,
+    .type-grid,
+    .prose-preview {
+      grid-template-columns: 1fr;
+    }
+    header h1 { font-size: 36px; }
+    .editor { padding: 28px 22px 34px; }
+    .editor h3 { font-size: 30px; }
+    .editor p { font-size: 17px; }
+    .sidebar { box-shadow: 0 14px 34px rgba(16, 15, 15, 0.05), inset 0 -1px rgba(255, 255, 255, 0.68); }
+    .type-row { grid-template-columns: 1fr; gap: 7px; }
+    .meta { text-align: left; }
+    .input { width: 100%; }
+  }
+</style>
+</head>
+<body data-font="serif">
+<div class="page">
+  <header>
+    <div>
+      <h1>Scriberr UI design system</h1>
+      <p class="sub">
+        A Flexoki-inspired interface language adapted for Scriberr's transcription workspace. The system keeps warm paper, disciplined ink, Iosevka typography, and quiet red-orange accents, then replaces heavy borders with translucent glass, blur, inset highlights, and soft elevation.
+      </p>
+    </div>
+    <div class="mode-card">
+      <div class="eyebrow">Font variant</div>
+      <div class="segmented" aria-label="Font variant preview">
+        <button class="segment active" type="button" data-font="serif">Etoile</button>
+        <button class="segment" type="button" data-font="sans">Aile</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="color">
+    <h2>Color</h2>
+    <p class="section-note">Use ivory and oat surfaces for calm working sessions. Keep the canvas less yellow than default Flexoki, reserve red-orange for decisive actions, and let elevation do the structural work.</p>
+    <hr class="rule">
+
+    <div class="swatch-group">
+      <div class="swatch-group-label">Canvas, Glass &amp; Ink</div>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="chip" style="background:#f8f5ec"></div><span class="hex">#F8F5EC</span><span class="token">--paper</span></div>
+        <div class="swatch"><div class="chip" style="background:#fffdf8"></div><span class="hex">#FFFDF8</span><span class="token">--surface</span></div>
+        <div class="swatch"><div class="chip" style="background:#f0eadc"></div><span class="hex">#F0EADC</span><span class="token">--surface-tint</span></div>
+        <div class="swatch"><div class="chip" style="background:rgba(255,253,248,.74)"></div><span class="hex">74% #FFFDF8</span><span class="token">--glass</span></div>
+        <div class="swatch"><div class="chip no-border" style="background:#100f0f"></div><span class="hex">#100F0F</span><span class="token">--ink</span></div>
+        <div class="swatch"><div class="chip no-border" style="background:#343331"></div><span class="hex">#343331</span><span class="token">--text</span></div>
+      </div>
+    </div>
+
+    <div class="swatch-group">
+      <div class="swatch-group-label">Neutral Scale</div>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="chip" style="background:#fffef9"></div><span class="hex">#FFFEF9</span><span class="token">neutral-50</span></div>
+        <div class="swatch"><div class="chip" style="background:#fbf8ee"></div><span class="hex">#FBF8EE</span><span class="token">neutral-100</span></div>
+        <div class="swatch"><div class="chip" style="background:#f0eadc"></div><span class="hex">#F0EADC</span><span class="token">neutral-200</span></div>
+        <div class="swatch"><div class="chip" style="background:#e3ded2"></div><span class="hex">#E3DED2</span><span class="token">line-soft</span></div>
+        <div class="swatch"><div class="chip no-border" style="background:#817f79"></div><span class="hex">#817F79</span><span class="token">neutral-500</span></div>
+        <div class="swatch"><div class="chip no-border" style="background:#686761"></div><span class="hex">#686761</span><span class="token">neutral-600</span></div>
+      </div>
+    </div>
+
+    <div class="swatch-group">
+      <div class="swatch-group-label">Accent &amp; Semantic</div>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="chip no-border" style="background:#c9452b"></div><span class="hex">#C9452B</span><span class="token">--accent</span></div>
+        <div class="swatch"><div class="chip no-border" style="background:#205ea6"></div><span class="hex">#205EA6</span><span class="token">--blue</span></div>
+        <div class="swatch"><div class="chip no-border" style="background:#66800b"></div><span class="hex">#66800B</span><span class="token">--green</span></div>
+        <div class="swatch"><div class="chip no-border" style="background:#ad8301"></div><span class="hex">#AD8301</span><span class="token">--yellow</span></div>
+        <div class="swatch"><div class="chip no-border" style="background:#a02f6f"></div><span class="hex">#A02F6F</span><span class="token">--magenta</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="typography">
+    <h2>Typography</h2>
+    <p class="section-note">The system supports two first-class variants: Etoile for editorial writing surfaces, Aile for denser product UI. Both keep weights moderate and letter spacing neutral.</p>
+    <hr class="rule">
+
+    <div class="type-grid">
+      <div class="type-card">
+        <div class="type-head"><strong>Iosevka Etoile</strong><span>serif prose</span></div>
+        <div class="type-row"><div class="type-specimen serif-demo t-display">Gather the scattered notes</div><div class="meta">44 / 1.05 / 500</div></div>
+        <div class="type-row"><div class="type-specimen serif-demo t-h1">Daily writing review</div><div class="meta">31 / 1.16 / 520</div></div>
+        <div class="type-row"><div class="type-specimen serif-demo t-body">A good note surface should disappear into the work while preserving structure, rhythm, and a little ceremony.</div><div class="meta">18 / 1.72 / 400</div></div>
+      </div>
+
+      <div class="type-card">
+        <div class="type-head"><strong>Iosevka Aile</strong><span>sans UI</span></div>
+        <div class="type-row"><div class="type-specimen sans-demo t-display">Gather the scattered notes</div><div class="meta">44 / 1.05 / 500</div></div>
+        <div class="type-row"><div class="type-specimen sans-demo t-h1">Daily writing review</div><div class="meta">31 / 1.16 / 520</div></div>
+        <div class="type-row"><div class="type-specimen sans-demo t-small">Use Aile for navigation, controls, metadata, toolbars, and compact panels that need to scan quickly.</div><div class="meta">14 / 1.55 / 430</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="prose">
+    <h2>Prose App Preview</h2>
+    <p class="section-note">A compact app layout showing the palette under real pressure: glass sidebar, selected rows, editorial text, metadata, annotation, and elevated surfaces.</p>
+    <hr class="rule">
+
+    <div class="panel prose-preview">
+      <aside class="sidebar">
+        <input class="search" type="text" placeholder="Search notes">
+        <a class="note-link active" href="#"><strong>Reading system</strong><span>Margins, highlights, and review cadence</span></a>
+        <a class="note-link" href="#"><strong>Essay fragments</strong><span>Draft ideas waiting for synthesis</span></a>
+        <a class="note-link" href="#"><strong>Project journal</strong><span>Decisions, tradeoffs, and unresolved edges</span></a>
+      </aside>
+      <main class="editor">
+        <h3>Reading system</h3>
+        <p class="byline">Edited today · 1,842 words · Private notebook</p>
+        <p>The interface should feel like a sheet of paper with memory. Text stays dark and steady, metadata recedes, and controls become legible only when the writer needs them.</p>
+        <p>Flexoki's warmth is strongest when it is disciplined: paper for the page, softened neutrals for structure, and saturated accents only for actions or meaning.</p>
+        <div class="callout">Annotation color should carry intent. Blue marks reference, green marks resolution, yellow marks uncertainty, and red marks destructive or irreversible action.</div>
+        <p>For long sessions, the system avoids sterile white and avoids low-contrast nostalgia. It should read quietly, but still feel crafted.</p>
+      </main>
+    </div>
+  </section>
+
+  <section id="spacing">
+    <h2>Spacing</h2>
+    <p class="section-note">Spacing favors a 4px base with more generous vertical rhythm around prose and tighter density in tool surfaces.</p>
+    <hr class="rule">
+
+    <div class="spacing-ruler">
+      <div class="space-token"><div class="space-bar" style="width:4px"></div><div class="space-label">4<span>--sp-1</span></div></div>
+      <div class="space-token"><div class="space-bar" style="width:8px"></div><div class="space-label">8<span>--sp-2</span></div></div>
+      <div class="space-token"><div class="space-bar" style="width:12px"></div><div class="space-label">12<span>--sp-3</span></div></div>
+      <div class="space-token"><div class="space-bar" style="width:16px"></div><div class="space-label">16<span>--sp-4</span></div></div>
+      <div class="space-token"><div class="space-bar" style="width:24px"></div><div class="space-label">24<span>--sp-5</span></div></div>
+      <div class="space-token"><div class="space-bar" style="width:32px"></div><div class="space-label">32<span>--sp-6</span></div></div>
+      <div class="space-token"><div class="space-bar" style="width:48px"></div><div class="space-label">48<span>--sp-7</span></div></div>
+      <div class="space-token"><div class="space-bar" style="width:64px"></div><div class="space-label">64<span>--sp-8</span></div></div>
+    </div>
+  </section>
+
+  <section id="shape">
+    <h2>Radius &amp; Elevation</h2>
+    <p class="section-note">Corners stay modest and functional. Separation comes from glass translucency, inset highlights, blur, and soft ambient shadows rather than visible outer borders.</p>
+    <hr class="rule">
+
+    <div class="token-row">
+      <div class="radius-card" style="border-radius:4px"><div class="lbl">4px<span>--r-xs</span></div></div>
+      <div class="radius-card" style="border-radius:7px"><div class="lbl">7px<span>--r-sm</span></div></div>
+      <div class="radius-card" style="border-radius:10px"><div class="lbl">10px<span>--r-md</span></div></div>
+      <div class="radius-card" style="border-radius:14px"><div class="lbl">14px<span>--r-lg</span></div></div>
+    </div>
+
+    <div class="token-row">
+      <div class="shadow-card" style="box-shadow:var(--shadow-sm)"><div class="lbl">--shadow-sm<span>glass control</span></div></div>
+      <div class="shadow-card" style="box-shadow:var(--shadow-md)"><div class="lbl">--shadow-md<span>recording card</span></div></div>
+      <div class="shadow-card" style="box-shadow:var(--shadow-lg)"><div class="lbl">--shadow-lg<span>menu / overlay</span></div></div>
+    </div>
+  </section>
+
+  <section id="components">
+    <h2>Core Components</h2>
+    <p class="section-note">Controls are compact, tactile, and readable against warm glass surfaces. Focus is blue for clarity; primary actions use the red-orange accent.</p>
+    <hr class="rule">
+
+    <div class="component">
+      <div class="component-name">&lt;Button /&gt;</div>
+      <div class="component-stage">
+        <button class="btn btn-primary">New note</button>
+        <button class="btn btn-secondary">Export</button>
+        <button class="btn btn-ghost">Archive</button>
+        <button class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+
+    <div class="component">
+      <div class="component-name">&lt;Input /&gt;</div>
+      <div class="component-stage">
+        <input class="input" type="text" placeholder="Search references">
+        <input class="input" type="text" value="Reading system">
+      </div>
+    </div>
+
+    <div class="component">
+      <div class="component-name">&lt;Checkbox /&gt;</div>
+      <div class="component-stage">
+        <label class="checkbox"><input type="checkbox"> Pin in sidebar</label>
+        <label class="checkbox"><input type="checkbox" checked="checked"> Include backlinks</label>
+      </div>
+    </div>
+
+    <div class="component">
+      <div class="component-name">&lt;Badge /&gt;</div>
+      <div class="component-stage">
+        <span class="badge badge-neutral">Draft</span>
+        <span class="badge badge-accent">Needs edit</span>
+        <span class="badge badge-success">Resolved</span>
+        <span class="badge badge-warning">Question</span>
+        <span class="badge badge-info">Reference</span>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+  const fontButtons = document.querySelectorAll(".segment[data-font]");
+  fontButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      document.body.dataset.font = button.dataset.font;
+      fontButtons.forEach((item) => item.classList.toggle("active", item === button));
+    });
+  });
+</script>
+</body>
+</html>
