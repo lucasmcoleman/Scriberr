@@ -107,6 +107,7 @@
     --glass: rgba(255, 253, 248, 0.74);
     --glass-strong: rgba(255, 254, 249, 0.84);
     --glass-muted: rgba(240, 234, 220, 0.58);
+    --glass-rail: linear-gradient(90deg, rgba(255, 253, 248, 0.64), rgba(255, 253, 248, 0.5));
 
     --serif: "Iosevka Etoile Web", ui-serif, Georgia, serif;
     --sans: "Iosevka Aile Web", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -117,10 +118,17 @@
     --r-md: 10px;
     --r-lg: 14px;
 
+    --rail-width: 64px;
+    --sidebar-width: 260px;
+    --content-audio: 896px;
+    --content-title: 856px;
+
     --shadow-sm: 0 8px 20px rgba(16, 15, 15, 0.06), 0 1px 2px rgba(16, 15, 15, 0.04), inset 0 1px rgba(255, 255, 255, 0.72);
     --shadow-md: 0 18px 42px rgba(16, 15, 15, 0.07), 0 4px 12px rgba(16, 15, 15, 0.04), inset 0 1px rgba(255, 255, 255, 0.82);
     --shadow-lg: 0 24px 54px rgba(16, 15, 15, 0.12), 0 6px 16px rgba(16, 15, 15, 0.065), inset 0 1px rgba(255, 255, 255, 0.82);
-    --shadow-sidebar: 16px 0 42px rgba(16, 15, 15, 0.05), 4px 0 12px rgba(16, 15, 15, 0.025), inset -1px 0 rgba(255, 255, 255, 0.68);
+    --shadow-sidebar: 10px 0 34px rgba(16, 15, 15, 0.032), 2px 0 10px rgba(16, 15, 15, 0.018), inset -1px 0 rgba(255, 255, 255, 0.42);
+    --shadow-player: 0 22px 58px rgba(16, 15, 15, 0.15), 0 7px 18px rgba(16, 15, 15, 0.065), inset 0 1px rgba(255, 255, 255, 0.78);
+    --shadow-pane: 0 28px 70px rgba(16, 15, 15, 0.18), 0 8px 22px rgba(16, 15, 15, 0.08), inset 0 1px rgba(255, 255, 255, 0.76);
     --hairline: inset 0 1px rgba(255, 255, 255, 0.72);
     --border: 0;
   }
@@ -382,16 +390,41 @@
 
   .prose-preview {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    position: relative;
     min-height: 420px;
     overflow: hidden;
   }
 
   .sidebar {
-    background: rgba(255, 253, 248, 0.74);
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 2;
+    width: var(--rail-width);
+    overflow: hidden;
+    background: var(--glass-rail);
     box-shadow: var(--shadow-sidebar);
     backdrop-filter: blur(24px);
+    padding: 18px 8px;
+    transition: width 260ms cubic-bezier(0.16, 1, 0.3, 1), padding 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sidebar:hover {
+    width: var(--sidebar-width);
     padding: 18px;
+  }
+
+  .sidebar-logo {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    margin: 0 auto 20px;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--accent);
+    box-shadow: 0 2px 12px rgba(175, 48, 41, 0.18);
+    color: #fffaf2;
+    font-weight: 800;
   }
 
   .search {
@@ -408,14 +441,50 @@
     padding: 0 11px;
     box-shadow: var(--shadow-sm);
     backdrop-filter: blur(16px);
+    opacity: 0;
+    transition: opacity 160ms ease;
+  }
+
+  .sidebar:hover .search {
+    opacity: 1;
   }
 
   .note-link {
-    display: block;
-    padding: 10px 11px;
+    display: flex;
+    align-items: center;
+    width: 40px;
+    min-height: 40px;
+    margin: 0 auto 4px;
+    overflow: hidden;
+    padding: 0;
     border-radius: var(--r-sm);
     color: var(--text-muted);
     text-decoration: none;
+  }
+
+  .sidebar:hover .note-link {
+    width: 100%;
+    margin-inline: 0;
+    padding: 10px 11px;
+  }
+
+  .note-icon {
+    display: grid;
+    flex: 0 0 40px;
+    place-items: center;
+  }
+
+  .note-copy {
+    width: 0;
+    overflow: hidden;
+    opacity: 0;
+    white-space: nowrap;
+    transition: width 180ms ease, opacity 160ms ease;
+  }
+
+  .sidebar:hover .note-copy {
+    width: auto;
+    opacity: 1;
   }
 
   .note-link strong {
@@ -441,7 +510,7 @@
   }
 
   .editor {
-    padding: 34px 42px 42px;
+    padding: 34px 42px 42px 98px;
     background: rgba(255, 253, 248, 0.56);
   }
 
@@ -461,7 +530,7 @@
   }
 
   .editor p {
-    max-width: 690px;
+    max-width: 760px;
     margin: 0 0 18px;
     color: var(--text);
     font-family: var(--serif);
@@ -683,6 +752,177 @@
   .badge-warning { background: #f3e8c7; color: #805f00; box-shadow: var(--shadow-sm); }
   .badge-info { background: #e4edf5; color: var(--blue); box-shadow: var(--shadow-sm); }
 
+  .audio-preview {
+    position: relative;
+    min-height: 520px;
+    overflow: hidden;
+    border-radius: var(--r-lg);
+    background:
+      linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(248, 247, 240, 0.98) 360px),
+      radial-gradient(circle at 28% 0%, rgba(188, 82, 21, 0.028), transparent 340px),
+      radial-gradient(circle at 78% 12%, rgba(36, 131, 123, 0.035), transparent 320px),
+      var(--paper);
+    box-shadow: var(--shadow-md);
+  }
+
+  .audio-content {
+    width: min(100%, var(--content-audio));
+    margin: 0 auto;
+    padding: 54px 32px 118px;
+  }
+
+  .audio-title {
+    width: min(100%, var(--content-title));
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 42px;
+    font-weight: 500;
+    line-height: 1.06;
+  }
+
+  .audio-meta {
+    display: flex;
+    gap: 18px;
+    margin: 18px 0 34px;
+    color: var(--text-faint);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .audio-tabs {
+    display: flex;
+    width: max-content;
+    gap: 4px;
+    margin: 0 auto 34px;
+    border-radius: 999px;
+    background: rgba(255, 253, 248, 0.78);
+    box-shadow: var(--shadow-sm);
+    padding: 4px;
+    backdrop-filter: blur(18px);
+  }
+
+  .audio-tab {
+    min-height: 32px;
+    border-radius: 999px;
+    padding: 0 16px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 32px;
+  }
+
+  .audio-tab.active {
+    background: var(--ink);
+    color: #fffaf2;
+    box-shadow: 0 8px 18px rgba(16, 15, 15, 0.12);
+  }
+
+  .transcript-row {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .transcript-time {
+    padding-top: 0.12em;
+    color: var(--text-faint);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.82;
+    white-space: nowrap;
+  }
+
+  .transcript-text {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.82;
+  }
+
+  .assistant-pane {
+    position: absolute;
+    top: 38px;
+    right: 28px;
+    width: 320px;
+    height: 360px;
+    overflow: hidden;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255, 254, 249, 0.82), rgba(249, 247, 240, 0.72));
+    box-shadow: var(--shadow-pane);
+    backdrop-filter: blur(28px) saturate(1.12);
+  }
+
+  .assistant-head {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) 30px;
+    align-items: center;
+    min-height: 54px;
+    padding: 0 14px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .assistant-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin: 0 16px 12px;
+    border-radius: 999px;
+    background: rgba(255, 253, 248, 0.64);
+    box-shadow: var(--hairline), 0 8px 18px rgba(16, 15, 15, 0.035);
+    padding: 4px;
+  }
+
+  .assistant-tab {
+    min-height: 34px;
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 34px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .assistant-tab.active {
+    background: var(--ink);
+    color: var(--surface);
+  }
+
+  .assistant-message {
+    margin: 12px 16px;
+    border-radius: 18px;
+    background: rgba(255, 254, 249, 0.66);
+    box-shadow: var(--shadow-sm);
+    padding: 12px 14px;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .audio-player {
+    position: absolute;
+    right: 50%;
+    bottom: 24px;
+    width: min(var(--content-audio), calc(100% - 64px));
+    min-height: 64px;
+    border-radius: 999px;
+    background: rgba(255, 254, 249, 0.82);
+    box-shadow: var(--shadow-player);
+    backdrop-filter: blur(24px) saturate(1.12);
+    transform: translateX(50%);
+  }
+
   @media (max-width: 760px) {
     body { padding: 30px 16px 72px; }
     header,
@@ -784,15 +1024,16 @@
 
   <section id="prose">
     <h2>Prose App Preview</h2>
-    <p class="section-note">A compact app layout showing the palette under real pressure: glass sidebar, selected rows, editorial text, metadata, annotation, and elevated surfaces.</p>
+    <p class="section-note">A compact app layout showing the palette under real pressure: overlay icon rail, selected rows, editorial text, metadata, annotation, and elevated surfaces.</p>
     <hr class="rule">
 
     <div class="panel prose-preview">
       <aside class="sidebar">
+        <div class="sidebar-logo">S</div>
         <input class="search" type="text" placeholder="Search notes">
-        <a class="note-link active" href="#"><strong>Reading system</strong><span>Margins, highlights, and review cadence</span></a>
-        <a class="note-link" href="#"><strong>Essay fragments</strong><span>Draft ideas waiting for synthesis</span></a>
-        <a class="note-link" href="#"><strong>Project journal</strong><span>Decisions, tradeoffs, and unresolved edges</span></a>
+        <a class="note-link active" href="#"><span class="note-icon">H</span><span class="note-copy"><strong>Reading system</strong><span>Margins, highlights, and review cadence</span></span></a>
+        <a class="note-link" href="#"><span class="note-icon">#</span><span class="note-copy"><strong>Essay fragments</strong><span>Draft ideas waiting for synthesis</span></span></a>
+        <a class="note-link" href="#"><span class="note-icon">S</span><span class="note-copy"><strong>Project journal</strong><span>Decisions, tradeoffs, and unresolved edges</span></span></a>
       </aside>
       <main class="editor">
         <h3>Reading system</h3>
@@ -802,6 +1043,37 @@
         <div class="callout">Annotation color should carry intent. Blue marks reference, green marks resolution, yellow marks uncertainty, and red marks destructive or irreversible action.</div>
         <p>For long sessions, the system avoids sterile white and avoids low-contrast nostalgia. It should read quietly, but still feel crafted.</p>
       </main>
+    </div>
+  </section>
+
+  <section id="audio-detail">
+    <h2>Audio Detail Surface</h2>
+    <p class="section-note">The transcript page uses a 896px reading column, 44px timestamp gutter, centered pill tabs, a matching-width floating player, and a draggable/resizable assistant pane with persisted placement in the app.</p>
+    <hr class="rule">
+
+    <div class="audio-preview">
+      <div class="audio-content">
+        <h3 class="audio-title">Laptop Performance Review Technical Limitations</h3>
+        <div class="audio-meta"><span>May 9, 3:31 PM</span><span>18 min</span></div>
+        <div class="audio-tabs"><span class="audio-tab active">Summary</span><span class="audio-tab">Transcript</span></div>
+        <div class="transcript-row">
+          <time class="transcript-time">0:00</time>
+          <p class="transcript-text">The review details excellent battery life and browser performance, balanced by issues in professional and gaming tasks.</p>
+        </div>
+        <div class="transcript-row">
+          <time class="transcript-time">0:30</time>
+          <p class="transcript-text">While the display and webcam are praised, specialized software struggles and gaming incompatibility limit its heavy workflow use.</p>
+        </div>
+      </div>
+
+      <aside class="assistant-pane">
+        <div class="assistant-head"><span>::</span><span>Assistant</span><span>x</span></div>
+        <div class="assistant-tabs"><span class="assistant-tab active">Chat</span><span class="assistant-tab">Notes</span></div>
+        <p class="assistant-message">Ask questions, find timestamps, or draft notes from the current transcript.</p>
+        <p class="assistant-message">Assistant size, placement, and open state persist across refreshes.</p>
+      </aside>
+
+      <div class="audio-player" aria-label="Floating audio player preview"></div>
     </div>
   </section>
 

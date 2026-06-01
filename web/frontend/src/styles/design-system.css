@@ -153,7 +153,7 @@
 }
 
 .scr-audio-detail {
-  width: min(100%, 800px);
+  width: min(100%, 896px);
   margin: 0 auto;
   padding: 4rem var(--scr-space-8) 0;
 }
@@ -182,7 +182,7 @@
 .scr-audio-title-button,
 .scr-audio-title-input {
   display: block;
-  width: min(100%, 760px);
+  width: min(100%, 856px);
   border: 0;
   background: transparent;
   padding: 0 0 3px;
@@ -330,7 +330,7 @@
 .scr-audio-summary {
   display: grid;
   gap: var(--scr-space-10);
-  max-width: 760px;
+  max-width: 896px;
   color: var(--scr-text-primary);
   font-family: var(--scr-font-content);
   font-size: 1.1875rem;
@@ -510,7 +510,7 @@
 .scr-transcript {
   display: grid;
   gap: var(--scr-space-4);
-  max-width: 760px;
+  max-width: 896px;
   min-width: 0;
 }
 
@@ -1821,7 +1821,7 @@ body[data-notes-pane-dragging="true"] {
 
 .scr-player-shell {
   position: fixed;
-  width: min(800px, calc(100% - (var(--scr-space-8) * 2)));
+  width: min(896px, calc(100% - (var(--scr-space-8) * 2)));
   bottom: var(--scr-space-6);
   left: 50%;
   z-index: 30;
