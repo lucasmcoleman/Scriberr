@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, ChevronRight, FileAudio, Home, Mic, Search, Settings, StopCircle, Tag, Trash2, UploadCloud, Video, Wand2, Youtube } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock3, FileAudio, Hash, Home, Mic, Search, Settings, StopCircle, Trash2, UploadCloud, Video, Wand2, Youtube } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -54,14 +54,14 @@ export function Sidebar({ activeItem = "home", activeTagId }: SidebarProps) {
         <img className="scr-logo-text" src="/logo-text.svg" alt="Scriberr" />
       </div>
       <nav className="scr-nav">
+        <p className="scr-nav-eyebrow">Main Menu</p>
         <Link className="scr-nav-item" data-active={activeItem === "home"} to="/">
           <Home size={18} aria-hidden="true" />
           <span className="scr-nav-label">Home</span>
         </Link>
         <div className="scr-nav-section">
           <button className="scr-nav-item scr-nav-toggle" data-active={activeItem === "tags"} type="button" aria-expanded={tagsOpen} onClick={() => setTagsOpen((current) => !current)}>
-            {tagsOpen ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
-            <Tag size={18} aria-hidden="true" />
+            <Hash size={18} aria-hidden="true" />
             <span className="scr-nav-label">Tags</span>
           </button>
           {tagsOpen ? (
@@ -105,7 +105,7 @@ function TopBar({ onUploadFilesClick, onYouTubeImportClick, onRecordClick }: Top
     <div className="scr-topbar">
       <div className="scr-search-shell" aria-hidden="true">
         <Search size={15} />
-        <span>Ask or search</span>
+        <span>Search library...</span>
         <kbd className="scr-kbd">⌘K</kbd>
       </div>
 
@@ -213,19 +213,20 @@ function RecordingCard({
         }
       }}
     >
-      <div className="scr-recording-icon">
-        <FileAudio size={24} aria-hidden="true" />
-      </div>
-      <div>
-        <h2 className="scr-recording-title">{recording.title}</h2>
-        <p className="scr-recording-meta-line">
-          <span>{recording.date}</span>
-          <span className="scr-recording-status" data-status={recording.status}>
-            {statusText(recording)}
-          </span>
-        </p>
+      <div className="scr-recording-card-head">
+        <div className="scr-recording-title-row">
+          <div className="scr-recording-title-group">
+            <span className="scr-recording-icon" aria-hidden="true">
+              <FileAudio size={15} />
+            </span>
+            <h2 className="scr-recording-title">{recording.title}</h2>
+          </div>
+          <div className="scr-recording-time">
+            <Clock3 size={14} aria-hidden="true" />
+            <span>{recording.date}</span>
+          </div>
+        </div>
         {recording.description ? <p className="scr-recording-description">{recording.description}</p> : null}
-        {recording.transcriptionId ? <RecordingTags transcriptionId={recording.transcriptionId} /> : null}
       </div>
       <div className="scr-recording-meta-actions">
         <div className="scr-recording-actions" aria-label={`${recording.title} actions`}>
@@ -306,6 +307,13 @@ function RecordingCard({
             {isProcessing ? <StopCircle size={16} aria-hidden="true" /> : <Trash2 size={16} aria-hidden="true" />}
           </button>
         </div>
+      </div>
+      <div className="scr-recording-footer">
+        <span className="scr-recording-status" data-status={recording.status}>
+          <CheckCircle2 size={14} aria-hidden="true" />
+          {statusText(recording)}
+        </span>
+        {recording.transcriptionId ? <RecordingTags transcriptionId={recording.transcriptionId} /> : null}
       </div>
     </article>
   );
@@ -446,12 +454,13 @@ function AudioListPage({ tagId }: { tagId?: string }) {
                 <div className="scr-feed-title-block">
                   <span className="scr-feed-eyebrow">Tag</span>
                   <h1>{selectedTag?.name || "Tagged audio"}</h1>
+                  <p>Review audio assigned to this tag.</p>
                 </div>
               ) : (
-                <button className="scr-feed-select" type="button">
-                  Yesterday, Apr 25
-                  <ChevronDown size={13} aria-hidden="true" />
-                </button>
+                <div className="scr-feed-title-block">
+                  <h1>Your Workspace</h1>
+                  <p>Review transcripts, extract insights, or start a new recording.</p>
+                </div>
               )}
             </div>
 
