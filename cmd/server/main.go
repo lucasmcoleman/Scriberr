@@ -245,6 +245,11 @@ func registerAdapters(cfg *config.Config) {
 		register()
 	}
 
+	// On AMD ROCm images the NVIDIA NeMo engines run via dedicated ROCm adapters
+	// (gfx1151 torch + cuda-graph decoder disabled), sharing one NeMo venv.
+	rocmBackend := os.Getenv("SCRIBERR_GPU_BACKEND") == "rocm"
+	nemoRocmEnvPath := filepath.Join(cfg.WhisperXEnv, "nemo_rocm")
+
 	// Shared environment path for NVIDIA models (NeMo-based)
 	nvidiaEnvPath := filepath.Join(cfg.WhisperXEnv, "parakeet")
 
@@ -259,7 +264,13 @@ func registerAdapters(cfg *config.Config) {
 
 	// Register transcription adapters
 	regT("whisperx", func() { registry.RegisterTranscriptionAdapter("whisperx", adapters.NewWhisperXAdapter(cfg.WhisperXEnv)) })
-	regT("parakeet", func() { registry.RegisterTranscriptionAdapter("parakeet", adapters.NewParakeetAdapter(nvidiaEnvPath)) })
+	regT("parakeet", func() {
+		if rocmBackend {
+			registry.RegisterTranscriptionAdapter("parakeet", adapters.NewParakeetROCmAdapter(nemoRocmEnvPath))
+		} else {
+			registry.RegisterTranscriptionAdapter("parakeet", adapters.NewParakeetAdapter(nvidiaEnvPath))
+		}
+	})
 	regT("canary", func() { registry.RegisterTranscriptionAdapter("canary", adapters.NewCanaryAdapter(nvidiaEnvPath)) }) // Shares with Parakeet
 	regT("voxtral", func() { registry.RegisterTranscriptionAdapter("voxtral", adapters.NewVoxtralAdapter(voxtralEnvPath)) })
 	regT("whisper_hf", func() { registry.RegisterTranscriptionAdapter("whisper_hf", adapters.NewWhisperHFAdapter(whisperHFEnvPath)) })
@@ -267,7 +278,13 @@ func registerAdapters(cfg *config.Config) {
 
 	// Register diarization adapters
 	regD("pyannote", func() { registry.RegisterDiarizationAdapter("pyannote", adapters.NewPyAnnoteAdapter(pyannoteEnvPath)) }) // Dedicated environment
-	regD("sortformer", func() { registry.RegisterDiarizationAdapter("sortformer", adapters.NewSortformerAdapter(nvidiaEnvPath)) }) // Shares with Parakeet
+	regD("sortformer", func() {
+		if rocmBackend {
+			registry.RegisterDiarizationAdapter("sortformer", adapters.NewSortformerROCmAdapter(nemoRocmEnvPath))
+		} else {
+			registry.RegisterDiarizationAdapter("sortformer", adapters.NewSortformerAdapter(nvidiaEnvPath)) // Shares with Parakeet
+		}
+	})
 
 	logger.Info("Adapter registration complete")
 }

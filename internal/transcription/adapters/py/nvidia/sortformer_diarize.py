@@ -11,6 +11,17 @@ import os
 from pathlib import Path
 import torch
 
+# ROCm/AMD: skip NeMo's CUDA-graph capability check (it dlopens libcuda.so.1,
+# absent on AMD). No-op on NVIDIA CUDA. See parakeet_transcribe.py.
+try:
+    if getattr(torch.version, "hip", None):
+        import nemo.core.utils.cuda_python_utils as _cgu
+        _cgu.check_cuda_python_cuda_graphs_conditional_nodes_supported = (
+            lambda *a, **k: (_ for _ in ()).throw(ImportError("cuda graphs unavailable on ROCm"))
+        )
+except Exception:
+    pass
+
 try:
     from nemo.collections.asr.models import SortformerEncLabelModel
 except ImportError:

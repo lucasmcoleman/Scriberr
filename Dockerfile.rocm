@@ -53,13 +53,14 @@ ENV PYTHONUNBUFFERED=1 \
   PYTORCH_ROCM_ARCH=gfx1151 \
   # Persist the downloaded Whisper model on the data volume across restarts.
   HF_HOME=/app/data/hf-cache \
-  # Enabled engines: whisper_hf (GPU transcription, pre-warmed), openai_whisper
-  # (cloud), and pyannote (CPU diarization, pre-warmed). The CUDA/CTranslate2/NeMo
-  # engines (whisperx, parakeet, canary, voxtral, sortformer) can't use the AMD
-  # GPU and would download multi-GB CUDA wheels at every start (engine envs aren't
-  # on the data volume), so they're disabled. whisper_hf targets its own gfx1151
-  # wheel index, so PYTORCH_INDEX_URL is intentionally NOT set globally.
-  SCRIBERR_DISABLE_ENGINES=whisperx,parakeet,canary,sortformer,voxtral
+  # GPU backend selector: makes Parakeet/Sortformer register their ROCm (NeMo on
+  # gfx1151) adapters instead of the CUDA ones.
+  SCRIBERR_GPU_BACKEND=rocm \
+  # Enabled: whisper_hf (GPU ASR), parakeet (GPU ASR, NeMo), openai_whisper
+  # (cloud), pyannote (CPU diar), sortformer (GPU diar, NeMo) — all pre-warmed.
+  # whisperx (CTranslate2) and voxtral can't use the AMD GPU; canary is NeMo but
+  # off by default to keep the image smaller (enable by removing it here).
+  SCRIBERR_DISABLE_ENGINES=whisperx,canary,voxtral
 
 WORKDIR /app
 
@@ -144,6 +145,24 @@ RUN --mount=type=cache,target=/root/.cache/uv set -eux; \
   uv sync; \
   uv run python -c "import torch, torchcodec; from pyannote.audio import Pipeline; print('pyannote prewarm ok torch', torch.__version__)"; \
   rm -rf /tmp/pyannote; \
+  chown -R appuser:appuser ${WHISPERX_ENV}
+
+# ---- Pre-warm the NeMo (Parakeet ASR + Sortformer diarization) ROCm engine ----
+# torch (gfx1151) + nemo-toolkit[asr] pinned + audio deps. Two-phase install
+# (torch from the AMD index only, then NeMo from PyPI) because uv's resolver
+# can't satisfy the gfx1151 torch wheels. The Parakeet/Sortformer model weights
+# download to HF_HOME (the data volume) on first use. build-essential (installed
+# above) is required for MIOpen's runtime kernel JIT (Parakeet LSTM / Sortformer).
+COPY internal/transcription/adapters/py/nemo_rocm/ /tmp/nemo_rocm/
+RUN --mount=type=cache,target=/root/.cache/uv set -eux; \
+  mkdir -p ${WHISPERX_ENV}/nemo_rocm; \
+  cp /tmp/nemo_rocm/*.py ${WHISPERX_ENV}/nemo_rocm/; \
+  cd ${WHISPERX_ENV}/nemo_rocm; \
+  uv venv .venv --python 3.12; \
+  uv pip install --python .venv/bin/python --index-url ${PYTORCH_INDEX_URL} torch torchaudio numpy; \
+  uv pip install --python .venv/bin/python "nemo-toolkit[asr]==2.7.3" librosa soundfile; \
+  .venv/bin/python -c "import torch, nemo.collections.asr; print('nemo prewarm ok torch', torch.__version__, 'hip', torch.version.hip)"; \
+  rm -rf /tmp/nemo_rocm; \
   chown -R appuser:appuser ${WHISPERX_ENV}
 
 # Binaries + entrypoint

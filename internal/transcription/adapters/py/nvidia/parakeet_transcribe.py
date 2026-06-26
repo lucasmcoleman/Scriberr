@@ -8,6 +8,20 @@ import json
 import sys
 import os
 from pathlib import Path
+
+# ROCm/AMD: NeMo's CUDA-graph RNNT/TDT decoder dlopens libcuda.so.1 at model load,
+# which fails on AMD GPUs. Force the capability check to report "unsupported" so
+# NeMo skips cuda graphs and uses the pure-PyTorch decoder. No-op on NVIDIA CUDA.
+try:
+    import torch as _torch
+    if getattr(_torch.version, "hip", None):
+        import nemo.core.utils.cuda_python_utils as _cgu
+        _cgu.check_cuda_python_cuda_graphs_conditional_nodes_supported = (
+            lambda *a, **k: (_ for _ in ()).throw(ImportError("cuda graphs unavailable on ROCm"))
+        )
+except Exception:
+    pass
+
 import nemo.collections.asr as nemo_asr
 
 
