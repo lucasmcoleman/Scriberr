@@ -1,0 +1,27 @@
+[project]
+name = "whisper-hf-transcription"
+version = "0.1.0"
+description = "Pure-PyTorch Whisper (HF Transformers) ASR for Scriberr — runs on AMD ROCm (gfx1151), CUDA, or CPU"
+requires-python = ">=3.10"
+dependencies = [
+    "transformers>=4.46",
+    "accelerate>=0.34",
+    "soundfile",
+    "numpy",
+    "torch",
+    "torchaudio",
+]
+
+# torch/torchaudio are pulled from a ROCm wheel index that ships native gfx1151
+# kernels (AMD's TheRock build). The index URL below is the gfx1151 RELEASE
+# channel; the Go adapter rewrites it to $PYTORCH_INDEX_URL at setup time so the
+# same project can target CUDA/CPU on other hosts. The index is intentionally
+# NOT `explicit` so torch's own ROCm runtime deps (rocm-sdk-*) resolve from it,
+# while everything else (transformers, numpy, …) resolves from PyPI.
+[tool.uv.sources]
+torch = { index = "torch-backend" }
+torchaudio = { index = "torch-backend" }
+
+[[tool.uv.index]]
+name = "torch-backend"
+url = "https://repo.amd.com/rocm/whl/gfx1151/"

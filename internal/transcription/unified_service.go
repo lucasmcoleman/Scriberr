@@ -29,12 +29,14 @@ const (
 	ModelSortformer      = "sortformer"
 	ModelOpenAI          = "openai_whisper"
 	ModelVoxtral         = "voxtral"
+	ModelWhisperHF       = "whisper_hf"
 	ModelDiarization31   = "pyannote/speaker-diarization-3.1"
 	FamilyNvidiaCanary   = "nvidia_canary"
 	FamilyNvidiaParakeet = "nvidia_parakeet"
 	FamilyWhisper        = "whisper"
 	FamilyOpenAI         = "openai"
 	FamilyMistralVoxtral = "mistral_voxtral"
+	FamilyHFWhisper      = "hf_whisper"
 	DiarizeSortformer    = "nvidia_sortformer"
 	OutputFormatJSON     = "json"
 )
@@ -387,6 +389,8 @@ func (u *UnifiedTranscriptionService) selectModels(params models.WhisperXParams)
 		transcriptionModelID = ModelOpenAI
 	case FamilyMistralVoxtral:
 		transcriptionModelID = ModelVoxtral
+	case FamilyHFWhisper:
+		transcriptionModelID = ModelWhisperHF
 	default:
 		transcriptionModelID = ModelWhisperX // Default fallback
 	}
@@ -565,6 +569,8 @@ func (u *UnifiedTranscriptionService) convertParametersForModel(params models.Wh
 		return u.convertToOpenAIParams(params)
 	case ModelVoxtral:
 		return u.convertToVoxtralParams(params)
+	case ModelWhisperHF:
+		return u.convertToWhisperHFParams(params)
 	default:
 		// Fallback to legacy conversion
 		return u.parametersToMap(params)
@@ -610,6 +616,46 @@ func (u *UnifiedTranscriptionService) convertToVoxtralParams(params models.Whisp
 	}
 
 	return paramMap
+}
+
+// convertToWhisperHFParams converts to whisper_hf (HF Transformers Whisper) parameters.
+func (u *UnifiedTranscriptionService) convertToWhisperHFParams(params models.WhisperXParams) map[string]interface{} {
+	paramMap := map[string]interface{}{
+		"model": mapWhisperHFModel(params.Model),
+	}
+
+	if params.Language != nil && *params.Language != "" {
+		paramMap["language"] = *params.Language
+	} else {
+		paramMap["language"] = "auto"
+	}
+
+	if params.BatchSize > 0 {
+		paramMap["batch_size"] = params.BatchSize
+	}
+
+	return paramMap
+}
+
+// mapWhisperHFModel resolves the stored model string to a Hugging Face model ID.
+// Full HF ids (containing '/') pass through; bare WhisperX sizes are translated;
+// anything unknown/empty defaults to the fast, high-quality large-v3-turbo.
+func mapWhisperHFModel(m string) string {
+	if strings.Contains(m, "/") {
+		return m
+	}
+	switch m {
+	case "large-v3-turbo", "turbo":
+		return "openai/whisper-large-v3-turbo"
+	case "large", "large-v1", "large-v2", "large-v3":
+		return "openai/whisper-large-v3"
+	case "medium", "medium.en":
+		return "openai/whisper-medium"
+	case "small", "small.en":
+		return "openai/whisper-small"
+	default:
+		return "openai/whisper-large-v3-turbo"
+	}
 }
 
 // convertToParakeetParams converts to Parakeet-specific parameters

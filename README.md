@@ -314,6 +314,30 @@ Or for local builds:
 docker compose -f docker-compose.build.blackwell.yml up -d
 ```
 
+#### AMD GPU Deployment (ROCm)
+
+For AMD RDNA3.5 "Strix Halo" APUs (gfx1151 — e.g. **Ryzen AI MAX+ 395 / Radeon 8060S**) on a ROCm 7.x host, a dedicated image runs Whisper transcription on the GPU. It uses the **"Whisper (AMD GPU)"** engine (OpenAI Whisper via Hugging Face Transformers + SDPA, pure PyTorch from AMD's native gfx1151 wheel index) — no CTranslate2/CUDA required.
+
+Requirements: AMD GPU exposed via `/dev/kfd` + `/dev/dri`, and the host kernel `amdgpu` driver. Then:
+
+```bash
+docker compose -f docker-compose.rocm.yml up -d
+```
+
+Or build locally:
+
+```bash
+./build-rocm.sh                 # builds ghcr.io/lucasmcoleman/scriberr:rocm
+docker compose -f docker-compose.rocm.yml up -d
+```
+
+In the transcription dialog, choose **Model Family → "Whisper (AMD GPU)"**. The first transcription downloads the Whisper model (~1.6 GB) into the data volume once.
+
+Notes:
+- The image pre-bundles the gfx1151 PyTorch runtime, so the GPU engine works on first run with no setup.
+- Only the GPU-capable engines are enabled (`SCRIBERR_DISABLE_ENGINES` turns off the CUDA/CTranslate2/NeMo engines that can't use an AMD GPU). Speaker diarization (pyannote) is disabled by default on this image — remove `pyannote` from `SCRIBERR_DISABLE_ENGINES` to run it on CPU.
+- `HSA_USE_SVM=0` / `HSA_ENABLE_SDMA=0` are set for unified-memory stability on Strix Halo. `TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1` can speed up attention but may raise GPU memory use.
+
 ### App Startup
 
 When you run Scriberr for the first time, it may take several minutes to start. This is normal!

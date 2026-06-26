@@ -1,0 +1,63 @@
+# Scriberr on AMD ROCm (gfx1151 / Strix Halo, e.g. Ryzen AI MAX+ 395).
+#
+# Select the "Whisper (Transformers, AMD/CPU)" engine in the UI to transcribe on
+# the GPU. The container's entrypoint grants the runtime user access to the
+# passed-through GPU devices automatically, so no host-specific group IDs are
+# required here.
+#
+#   docker compose -f docker-compose.rocm.yml up -d
+#
+# Build locally instead of pulling:  docker build -f Dockerfile.rocm -t ghcr.io/lucasmcoleman/scriberr:rocm .
+
+services:
+  scriberr:
+    image: ghcr.io/lucasmcoleman/scriberr:rocm
+    container_name: scriberr-rocm
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - scriberr_data:/app/data
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    # Belt-and-suspenders: the entrypoint also resolves GPU device groups at
+    # runtime, but adding the host's video group here is harmless.
+    group_add:
+      - video
+    ipc: host
+    shm_size: "16gb"
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    environment:
+      # Hugging Face token (optional for public Whisper models; needed for gated
+      # pyannote diarization).
+      HUGGINGFACE_TOKEN: ${HUGGINGFACE_TOKEN:-}
+      PUID: "1000"
+      PGID: "1000"
+      # --- gfx1151 / unified-memory stability (recommended on Strix Halo) ---
+      HSA_USE_SVM: "0"
+      HSA_ENABLE_SDMA: "0"
+      HIP_VISIBLE_DEVICES: "0"
+      PYTORCH_ALLOC_CONF: "backend:native,expandable_segments:True,garbage_collection_threshold:0.9,max_split_size_mb:512"
+      # Optional speed tweak: enables experimental flash/mem-efficient attention.
+      # Left OFF by default — on long audio it raised peak GPU memory and OOM-killed
+      # the worker on this shared-GPU box. Set to "1" to try it if you have GPU
+      # memory headroom (no other GPU containers running).
+      # TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL: "1"
+    deploy:
+      resources:
+        limits:
+          # large-v3 fp16 peaks ~10-12GB; give headroom on the 128GB APU.
+          memory: 32G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+
+volumes:
+  scriberr_data: {}
