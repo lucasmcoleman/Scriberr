@@ -39,8 +39,23 @@ func GetPyTorchCUDAVersion() string {
 }
 
 // GetPyTorchWheelURL returns the full PyTorch wheel URL for the configured CUDA version.
+// If PYTORCH_INDEX_URL is set it takes precedence (e.g. an AMD ROCm gfx1151 index),
+// allowing the same engines to target ROCm/CUDA/CPU without per-engine edits.
 func GetPyTorchWheelURL() string {
+	if url := os.Getenv("PYTORCH_INDEX_URL"); url != "" {
+		return url
+	}
 	return fmt.Sprintf("https://download.pytorch.org/whl/%s", GetPyTorchCUDAVersion())
+}
+
+// GetPyTorchIndexURL returns an explicit PYTORCH_INDEX_URL override if set,
+// otherwise the provided default. Used by backend-specific adapters (e.g. the
+// ROCm whisper_hf engine) that ship their own default wheel index.
+func GetPyTorchIndexURL(defaultURL string) string {
+	if url := os.Getenv("PYTORCH_INDEX_URL"); url != "" {
+		return url
+	}
+	return defaultURL
 }
 
 // CheckEnvironmentReady checks if a UV environment is ready with caching and singleflight

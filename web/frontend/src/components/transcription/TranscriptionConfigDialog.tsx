@@ -269,6 +269,12 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
             if (key === 'model_family' && value === 'whisper') {
                 newParams.diarize_model = 'pyannote';
             }
+            if (key === 'model_family' && value === 'hf_whisper') {
+                newParams.diarize_model = 'pyannote';
+                if (!prev.model || !prev.model.includes('/')) {
+                    newParams.model = 'openai/whisper-large-v3-turbo';
+                }
+            }
             return newParams;
         });
     };
@@ -367,7 +373,8 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
                         value={params.model_family}
                         onValueChange={(v) => updateParam('model_family', v)}
                         options={[
-                            { value: "whisper", label: "Whisper" },
+                            { value: "whisper", label: "Whisper (WhisperX)" },
+                            { value: "hf_whisper", label: "Whisper (AMD GPU)" },
                             { value: "nvidia_parakeet", label: "NVIDIA Parakeet" },
                             { value: "nvidia_canary", label: "NVIDIA Canary" },
                             { value: "mistral_voxtral", label: "Mistral Voxtral" },
@@ -402,6 +409,9 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
                     )}
                     {params.model_family === "mistral_voxtral" && (
                         <VoxtralConfig params={params} updateParam={updateParam} />
+                    )}
+                    {params.model_family === "hf_whisper" && (
+                        <WhisperHFConfig params={params} updateParam={updateParam} />
                     )}
                 </div>
 
@@ -672,6 +682,46 @@ function OpenAIConfig({
                     Word-level timestamps are only supported by whisper-1. Synchronized playback won't be available.
                 </InfoBanner>
             )}
+        </div>
+    );
+}
+
+function WhisperHFConfig({ params, updateParam }: ConfigProps) {
+    return (
+        <div className="space-y-6">
+            <InfoBanner variant="info" title="AMD GPU / CPU — Transformers Whisper">
+                Runs OpenAI Whisper via Hugging Face Transformers (SDPA, pure PyTorch). Uses the AMD ROCm GPU when available, with word-level timestamps. No CTranslate2 required.
+            </InfoBanner>
+
+            <Section title="Model">
+                <SelectField
+                    label="Whisper model"
+                    description="Turbo is fastest; large-v3 is most accurate."
+                    value={params.model && params.model.includes('/') ? params.model : "openai/whisper-large-v3-turbo"}
+                    onValueChange={(v) => updateParam('model', v)}
+                    options={[
+                        { value: "openai/whisper-large-v3-turbo", label: "Large v3 Turbo (fast)" },
+                        { value: "openai/whisper-large-v3", label: "Large v3 (accurate)" },
+                        { value: "openai/whisper-medium", label: "Medium" },
+                        { value: "openai/whisper-small", label: "Small" },
+                    ]}
+                />
+            </Section>
+
+            <Section title="Language Settings">
+                <SelectField label="Language" description="Source language for transcription" value={params.language || "en"} onValueChange={(v) => updateParam('language', v)} options={LANGUAGES} />
+            </Section>
+
+            <AdvancedAccordion>
+                <FormField label="Batch Size" description="Higher is faster on GPU but uses more VRAM (large-v3 fp16 peaks ~10-12GB).">
+                    <Input
+                        type="number" min={1} max={64}
+                        value={params.batch_size || 8}
+                        onChange={(e) => updateParam('batch_size', parseInt(e.target.value) || 8)}
+                        className={inputClassName}
+                    />
+                </FormField>
+            </AdvancedAccordion>
         </div>
     );
 }

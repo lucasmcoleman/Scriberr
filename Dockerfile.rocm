@@ -1,0 +1,129 @@
+# Multi-stage build for Scriberr with AMD ROCm GPU transcription.
+#
+# Targets AMD RDNA3.5 "Strix Halo" iGPUs (gfx1151, e.g. Ryzen AI MAX+ 395 /
+# Radeon 8060S) on a ROCm 7.2 host. The GPU transcription engine is `whisper_hf`
+# (OpenAI Whisper via HF Transformers, SDPA) — pure PyTorch, so it runs on ROCm
+# with no CTranslate2/torchvision. PyTorch comes from AMD's native gfx1151 wheel
+# index, which ships real gfx1151 kernels and bundles its own ROCm runtime
+# (TheRock), so a slim base image is sufficient — no full ROCm base required.
+#
+# Build:   docker build -f Dockerfile.rocm -t scriberr:rocm .
+# Run:     see docker-compose.rocm.yml (needs /dev/kfd + /dev/dri passthrough)
+
+########################
+# UI build stage
+########################
+FROM node:20-alpine AS ui-builder
+WORKDIR /web
+COPY web/frontend/package*.json ./frontend/
+RUN cd frontend && npm ci
+COPY web/frontend ./frontend
+RUN cd frontend && npm run build
+
+
+########################
+# Go build stage
+########################
+FROM golang:1.24-bookworm AS go-builder
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN rm -rf internal/web/dist && mkdir -p internal/web
+COPY --from=ui-builder /web/frontend/dist internal/web/dist
+RUN CGO_ENABLED=0 go build -o /out/scriberr cmd/server/main.go
+RUN mkdir -p /out/bin/cli \
+  && GOOS=linux GOARCH=amd64 go build -o /out/bin/cli/scriberr-linux-amd64 ./cmd/scriberr-cli
+
+
+########################
+# ROCm runtime stage
+########################
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+  HOST=0.0.0.0 \
+  PORT=8080 \
+  DATABASE_PATH=/app/data/scriberr.db \
+  UPLOAD_DIR=/app/data/uploads \
+  WHISPERX_ENV=/app/whisperx-env \
+  APP_ENV=production \
+  PUID=1000 \
+  PGID=1000 \
+  PYTORCH_ROCM_ARCH=gfx1151 \
+  # Persist the downloaded Whisper model on the data volume across restarts.
+  HF_HOME=/app/data/hf-cache \
+  # Only whisper_hf (GPU, pre-warmed in this image) and openai_whisper (cloud)
+  # are enabled. The CUDA/CTranslate2/NeMo engines can't use the AMD GPU and
+  # would download multi-GB CUDA wheels at every start (the engine envs are not
+  # on the data volume). pyannote/sortformer diarization is disabled too — run
+  # diarization via a dedicated sidecar, or re-enable pyannote here (it will run
+  # on CPU). whisper_hf targets its own gfx1151 wheel index, so PYTORCH_INDEX_URL
+  # is intentionally NOT set globally.
+  SCRIBERR_DISABLE_ENGINES=whisperx,parakeet,canary,sortformer,voxtral,pyannote
+
+WORKDIR /app
+
+# System deps. ffmpeg: audio decode (used by transformers). libatomic1/libnuma1/
+# libgomp1/libdrm2/libelf1: required by the TheRock-bundled ROCm runtime in the
+# torch wheels. build-essential/python3-dev: building Python C extensions.
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+       curl ca-certificates ffmpeg git gosu unzip \
+       build-essential gcc g++ make python3-dev \
+       libatomic1 libnuma1 libgomp1 libdrm2 libelf1 \
+  && rm -rf /var/lib/apt/lists/*
+
+# uv (fast Python package manager)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+  && cp /root/.local/bin/uv /usr/local/bin/uv \
+  && chmod 755 /usr/local/bin/uv \
+  && uv --version
+
+# yt-dlp + Deno (YouTube ingestion support, mirrors the CPU image)
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+  && chmod a+rx /usr/local/bin/yt-dlp \
+  && yt-dlp --version
+RUN curl -fsSL https://deno.land/install.sh | sh \
+  && cp /root/.deno/bin/deno /usr/local/bin/deno \
+  && chmod 755 /usr/local/bin/deno \
+  && deno --version
+
+# Default user (UID/GID 1000 to match PUID/PGID and the host data volume)
+RUN groupadd -g 1000 appuser \
+  && useradd -m -u 1000 -g 1000 appuser \
+  && mkdir -p /app/data/uploads /app/data/transcripts \
+  && chown -R appuser:appuser /app
+
+# ---- Pre-warm the whisper_hf GPU engine at BUILD time ----
+# Installs torch+ROCm runtime (from the gfx1151 index) and the transformers
+# stack into the engine venv so the first transcription does NOT pay a ~5GB
+# install. Two-phase install: torch from the AMD index only (it returns HTTP 403
+# for packages it does not host, which breaks uv's multi-index resolver), then
+# the transformers stack from PyPI.
+# Wheel index for the gfx1151 torch build (build-time only; not a runtime ENV).
+ARG PYTORCH_INDEX_URL=https://repo.amd.com/rocm/whl/gfx1151/
+COPY internal/transcription/adapters/py/whisper_hf/whisper_transcribe.py /tmp/whisper_hf/whisper_transcribe.py
+RUN --mount=type=cache,target=/root/.cache/uv set -eux; \
+  mkdir -p ${WHISPERX_ENV}/whisper_hf; \
+  cp /tmp/whisper_hf/whisper_transcribe.py ${WHISPERX_ENV}/whisper_hf/; \
+  cd ${WHISPERX_ENV}/whisper_hf; \
+  uv venv .venv --python 3.12; \
+  uv pip install --python .venv/bin/python --index-url ${PYTORCH_INDEX_URL} torch torchaudio numpy; \
+  uv pip install --python .venv/bin/python "transformers>=4.46" "accelerate>=0.34" soundfile; \
+  .venv/bin/python -c "import torch, transformers; print('prewarm ok torch', torch.__version__, 'hip', torch.version.hip, 'transformers', transformers.__version__)"; \
+  rm -rf /tmp/whisper_hf; \
+  chown -R appuser:appuser ${WHISPERX_ENV}
+
+# Binaries + entrypoint
+COPY --from=go-builder /out/scriberr /app/scriberr
+COPY --from=go-builder /out/bin/cli /app/bin/cli
+COPY docker-entrypoint.rocm.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+  && chown appuser:appuser /app/scriberr
+
+EXPOSE 8080
+VOLUME ["/app/data"]
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["/app/scriberr"]

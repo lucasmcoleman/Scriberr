@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -215,9 +216,34 @@ func main() {
 	logger.Info("Server stopped")
 }
 
-// registerAdapters registers all transcription and diarization adapters with config-based paths
+// registerAdapters registers all transcription and diarization adapters with config-based paths.
+// Engines listed in SCRIBERR_DISABLE_ENGINES (comma-separated) are skipped — used by the ROCm
+// image to avoid initializing CUDA/CTranslate2-only engines that cannot run on AMD GPUs.
 func registerAdapters(cfg *config.Config) {
 	logger.Info("Registering adapters with environment path", "whisperx_env", cfg.WhisperXEnv)
+
+	disabled := map[string]bool{}
+	if v := os.Getenv("SCRIBERR_DISABLE_ENGINES"); v != "" {
+		for _, e := range strings.Split(v, ",") {
+			if e = strings.TrimSpace(e); e != "" {
+				disabled[e] = true
+			}
+		}
+	}
+	regT := func(id string, register func()) {
+		if disabled[id] {
+			logger.Info("Transcription engine disabled via SCRIBERR_DISABLE_ENGINES", "engine", id)
+			return
+		}
+		register()
+	}
+	regD := func(id string, register func()) {
+		if disabled[id] {
+			logger.Info("Diarization engine disabled via SCRIBERR_DISABLE_ENGINES", "engine", id)
+			return
+		}
+		register()
+	}
 
 	// Shared environment path for NVIDIA models (NeMo-based)
 	nvidiaEnvPath := filepath.Join(cfg.WhisperXEnv, "parakeet")
@@ -228,23 +254,20 @@ func registerAdapters(cfg *config.Config) {
 	// Dedicated environment path for Voxtral (Mistral AI model)
 	voxtralEnvPath := filepath.Join(cfg.WhisperXEnv, "voxtral")
 
+	// Dedicated environment path for HF Transformers Whisper (ROCm/AMD GPU + CPU)
+	whisperHFEnvPath := filepath.Join(cfg.WhisperXEnv, "whisper_hf")
+
 	// Register transcription adapters
-	registry.RegisterTranscriptionAdapter("whisperx",
-		adapters.NewWhisperXAdapter(cfg.WhisperXEnv))
-	registry.RegisterTranscriptionAdapter("parakeet",
-		adapters.NewParakeetAdapter(nvidiaEnvPath))
-	registry.RegisterTranscriptionAdapter("canary",
-		adapters.NewCanaryAdapter(nvidiaEnvPath)) // Shares with Parakeet
-	registry.RegisterTranscriptionAdapter("voxtral",
-		adapters.NewVoxtralAdapter(voxtralEnvPath))
-	registry.RegisterTranscriptionAdapter("openai_whisper",
-		adapters.NewOpenAIAdapter(cfg.OpenAIAPIKey))
+	regT("whisperx", func() { registry.RegisterTranscriptionAdapter("whisperx", adapters.NewWhisperXAdapter(cfg.WhisperXEnv)) })
+	regT("parakeet", func() { registry.RegisterTranscriptionAdapter("parakeet", adapters.NewParakeetAdapter(nvidiaEnvPath)) })
+	regT("canary", func() { registry.RegisterTranscriptionAdapter("canary", adapters.NewCanaryAdapter(nvidiaEnvPath)) }) // Shares with Parakeet
+	regT("voxtral", func() { registry.RegisterTranscriptionAdapter("voxtral", adapters.NewVoxtralAdapter(voxtralEnvPath)) })
+	regT("whisper_hf", func() { registry.RegisterTranscriptionAdapter("whisper_hf", adapters.NewWhisperHFAdapter(whisperHFEnvPath)) })
+	regT("openai_whisper", func() { registry.RegisterTranscriptionAdapter("openai_whisper", adapters.NewOpenAIAdapter(cfg.OpenAIAPIKey)) })
 
 	// Register diarization adapters
-	registry.RegisterDiarizationAdapter("pyannote",
-		adapters.NewPyAnnoteAdapter(pyannoteEnvPath)) // Dedicated environment
-	registry.RegisterDiarizationAdapter("sortformer",
-		adapters.NewSortformerAdapter(nvidiaEnvPath)) // Shares with Parakeet
+	regD("pyannote", func() { registry.RegisterDiarizationAdapter("pyannote", adapters.NewPyAnnoteAdapter(pyannoteEnvPath)) }) // Dedicated environment
+	regD("sortformer", func() { registry.RegisterDiarizationAdapter("sortformer", adapters.NewSortformerAdapter(nvidiaEnvPath)) }) // Shares with Parakeet
 
 	logger.Info("Adapter registration complete")
 }
