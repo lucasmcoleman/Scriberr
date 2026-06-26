@@ -53,14 +53,13 @@ ENV PYTHONUNBUFFERED=1 \
   PYTORCH_ROCM_ARCH=gfx1151 \
   # Persist the downloaded Whisper model on the data volume across restarts.
   HF_HOME=/app/data/hf-cache \
-  # Only whisper_hf (GPU, pre-warmed in this image) and openai_whisper (cloud)
-  # are enabled. The CUDA/CTranslate2/NeMo engines can't use the AMD GPU and
-  # would download multi-GB CUDA wheels at every start (the engine envs are not
-  # on the data volume). pyannote/sortformer diarization is disabled too — run
-  # diarization via a dedicated sidecar, or re-enable pyannote here (it will run
-  # on CPU). whisper_hf targets its own gfx1151 wheel index, so PYTORCH_INDEX_URL
-  # is intentionally NOT set globally.
-  SCRIBERR_DISABLE_ENGINES=whisperx,parakeet,canary,sortformer,voxtral,pyannote
+  # Enabled engines: whisper_hf (GPU transcription, pre-warmed), openai_whisper
+  # (cloud), and pyannote (CPU diarization, pre-warmed). The CUDA/CTranslate2/NeMo
+  # engines (whisperx, parakeet, canary, voxtral, sortformer) can't use the AMD
+  # GPU and would download multi-GB CUDA wheels at every start (engine envs aren't
+  # on the data volume), so they're disabled. whisper_hf targets its own gfx1151
+  # wheel index, so PYTORCH_INDEX_URL is intentionally NOT set globally.
+  SCRIBERR_DISABLE_ENGINES=whisperx,parakeet,canary,sortformer,voxtral
 
 WORKDIR /app
 
@@ -71,7 +70,7 @@ RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
        curl ca-certificates ffmpeg git gosu unzip \
        build-essential gcc g++ make python3-dev \
-       libatomic1 libnuma1 libgomp1 libdrm2 libelf1 \
+       libatomic1 libnuma1 libgomp1 libdrm2 libelf1 libsndfile1 \
   && rm -rf /var/lib/apt/lists/*
 
 # uv (fast Python package manager)
@@ -113,6 +112,38 @@ RUN --mount=type=cache,target=/root/.cache/uv set -eux; \
   uv pip install --python .venv/bin/python "transformers>=4.46" "accelerate>=0.34" soundfile; \
   .venv/bin/python -c "import torch, transformers; print('prewarm ok torch', torch.__version__, 'hip', torch.version.hip, 'transformers', transformers.__version__)"; \
   rm -rf /tmp/whisper_hf; \
+  chown -R appuser:appuser ${WHISPERX_ENV}
+
+# ---- Pre-warm the pyannote diarization engine at BUILD time (CPU) ----
+# pyannote.audio 4.0.2 hard-pins torch==2.8.0, which has no gfx1151 ROCm build,
+# so diarization runs on CPU. We write a CPU-routed pyproject into the engine env
+# (torch/torchaudio/torchcodec from the CPU index — the default PyPI torchcodec
+# links CUDA's libnvrtc and fails to load here) and uv-sync it, so the adapter
+# finds the env ready and never re-installs at runtime. The shared embedded
+# pyproject is left untouched so CUDA builds keep GPU diarization.
+COPY internal/transcription/adapters/py/pyannote/pyannote_diarize.py /tmp/pyannote/pyannote_diarize.py
+RUN --mount=type=cache,target=/root/.cache/uv set -eux; \
+  mkdir -p ${WHISPERX_ENV}/pyannote; \
+  cp /tmp/pyannote/pyannote_diarize.py ${WHISPERX_ENV}/pyannote/; \
+  cd ${WHISPERX_ENV}/pyannote; \
+  printf '%s\n' \
+    '[project]' \
+    'name = "pyannote-diarization"' \
+    'version = "0.1.0"' \
+    'requires-python = ">=3.10"' \
+    'dependencies = ["torch>=2.5.0","torchaudio>=2.5.0","torchcodec==0.7.0","huggingface-hub>=0.28.1","pyannote.audio==4.0.2"]' \
+    '[tool.uv.sources]' \
+    'torch = [{ index = "pytorch-cpu" }]' \
+    'torchaudio = [{ index = "pytorch-cpu" }]' \
+    'torchcodec = [{ index = "pytorch-cpu" }]' \
+    '[[tool.uv.index]]' \
+    'name = "pytorch-cpu"' \
+    'url = "https://download.pytorch.org/whl/cpu"' \
+    'explicit = true' \
+    > pyproject.toml; \
+  uv sync; \
+  uv run python -c "import torch, torchcodec; from pyannote.audio import Pipeline; print('pyannote prewarm ok torch', torch.__version__)"; \
+  rm -rf /tmp/pyannote; \
   chown -R appuser:appuser ${WHISPERX_ENV}
 
 # Binaries + entrypoint

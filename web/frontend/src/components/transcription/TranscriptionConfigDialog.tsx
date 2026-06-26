@@ -248,6 +248,11 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
     const [validationMessage, setValidationMessage] = useState("");
     const { getAuthHeaders } = useAuth();
     const [availableModels, setAvailableModels] = useState<string[]>(["whisper-1"]);
+    // Which transcription families / diarizers are actually registered on this
+    // backend (engines can be disabled per-image, e.g. on the AMD ROCm build).
+    // null = unknown -> show everything (safe fallback).
+    const [availableFamilies, setAvailableFamilies] = useState<string[] | null>(null);
+    const [availableDiarizers, setAvailableDiarizers] = useState<string[] | null>(null);
 
     // Reset when dialog opens
     useEffect(() => {
@@ -262,6 +267,34 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
             setProfileDescription(initialDescription);
         }
     }, [open, initialParams, initialName, initialDescription, isMultiTrack]);
+
+    // Discover which engines are actually available on this server so the UI only
+    // offers ones that work (the ROCm image, for example, disables the CUDA-only
+    // engines and Sortformer).
+    useEffect(() => {
+        if (!open) return;
+        const ENGINE_TO_FAMILY: Record<string, string> = {
+            whisperx: "whisper", whisper_hf: "hf_whisper", parakeet: "nvidia_parakeet",
+            canary: "nvidia_canary", voxtral: "mistral_voxtral", openai_whisper: "openai",
+        };
+        const ENGINE_TO_DIARIZER: Record<string, string> = {
+            pyannote: "pyannote", sortformer: "nvidia_sortformer",
+        };
+        (async () => {
+            try {
+                const res = await fetch('/api/v1/transcription/models', { headers: { ...getAuthHeaders() } });
+                if (!res.ok) return;
+                const data = await res.json();
+                const ids = Object.keys(data.models || {});
+                const fams = Array.from(new Set(ids.map((id) => ENGINE_TO_FAMILY[id]).filter(Boolean)));
+                const dias = Array.from(new Set(ids.map((id) => ENGINE_TO_DIARIZER[id]).filter(Boolean)));
+                if (fams.length) setAvailableFamilies(fams);
+                setAvailableDiarizers(dias);
+            } catch {
+                // network/error -> leave nulls so all options stay visible
+            }
+        })();
+    }, [open]);
 
     const updateParam = <K extends keyof WhisperXParams>(key: K, value: WhisperXParams[K]) => {
         setParams(prev => {
@@ -379,7 +412,7 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
                             { value: "nvidia_canary", label: "NVIDIA Canary" },
                             { value: "mistral_voxtral", label: "Mistral Voxtral" },
                             { value: "openai", label: "OpenAI" },
-                        ]}
+                        ].filter((o) => !availableFamilies || availableFamilies.includes(o.value) || o.value === params.model_family)}
                     />
 
                     {/* Multi-track notice */}
@@ -391,13 +424,13 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
 
                     {/* Model-Specific Configuration */}
                     {params.model_family === "whisper" && (
-                        <WhisperConfig params={params} updateParam={updateParam} isMultiTrack={isMultiTrack} />
+                        <WhisperConfig params={params} updateParam={updateParam} isMultiTrack={isMultiTrack} availableDiarizers={availableDiarizers} />
                     )}
                     {params.model_family === "nvidia_parakeet" && (
-                        <ParakeetConfig params={params} updateParam={updateParam} isMultiTrack={isMultiTrack} />
+                        <ParakeetConfig params={params} updateParam={updateParam} isMultiTrack={isMultiTrack} availableDiarizers={availableDiarizers} />
                     )}
                     {params.model_family === "nvidia_canary" && (
-                        <CanaryConfig params={params} updateParam={updateParam} isMultiTrack={isMultiTrack} />
+                        <CanaryConfig params={params} updateParam={updateParam} isMultiTrack={isMultiTrack} availableDiarizers={availableDiarizers} />
                     )}
                     {params.model_family === "openai" && (
                         <OpenAIConfig
@@ -411,7 +444,7 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
                         <VoxtralConfig params={params} updateParam={updateParam} />
                     )}
                     {params.model_family === "hf_whisper" && (
-                        <WhisperHFConfig params={params} updateParam={updateParam} />
+                        <WhisperHFConfig params={params} updateParam={updateParam} isMultiTrack={isMultiTrack} availableDiarizers={availableDiarizers} />
                     )}
                 </div>
 
@@ -448,11 +481,12 @@ export const TranscriptionConfigDialog = memo(function TranscriptionConfigDialog
 // Shared Diarization Section
 // ============================================================================
 
-function DiarizationSection({ id, params, updateParam, description }: {
+function DiarizationSection({ id, params, updateParam, description, availableDiarizers }: {
     id: string;
     params: WhisperXParams;
     updateParam: <K extends keyof WhisperXParams>(key: K, value: WhisperXParams[K]) => void;
     description?: string;
+    availableDiarizers?: string[] | null;
 }) {
     return (
         <Section title="Speaker Diarization" description={description}>
@@ -468,7 +502,7 @@ function DiarizationSection({ id, params, updateParam, description }: {
                             options={[
                                 { value: "pyannote", label: "Pyannote" },
                                 { value: "nvidia_sortformer", label: "NVIDIA Sortformer" },
-                            ]}
+                            ].filter((o) => !availableDiarizers || availableDiarizers.includes(o.value) || o.value === params.diarize_model)}
                         />
 
                         <div className="grid grid-cols-2 gap-4">
@@ -539,9 +573,10 @@ interface ConfigProps {
     params: WhisperXParams;
     updateParam: <K extends keyof WhisperXParams>(key: K, value: WhisperXParams[K]) => void;
     isMultiTrack?: boolean;
+    availableDiarizers?: string[] | null;
 }
 
-function WhisperConfig({ params, updateParam, isMultiTrack }: ConfigProps) {
+function WhisperConfig({ params, updateParam, isMultiTrack, availableDiarizers }: ConfigProps) {
     return (
         <div className="space-y-6">
             <Section title="Model Settings">
@@ -554,7 +589,7 @@ function WhisperConfig({ params, updateParam, isMultiTrack }: ConfigProps) {
             </Section>
 
             {!isMultiTrack && (
-                <DiarizationSection id="diarize" params={params} updateParam={updateParam} description="Identify and separate different speakers in the audio" />
+                <DiarizationSection id="diarize" params={params} updateParam={updateParam} availableDiarizers={availableDiarizers} description="Identify and separate different speakers in the audio" />
             )}
 
             <AdvancedAccordion>
@@ -602,7 +637,7 @@ function WhisperConfig({ params, updateParam, isMultiTrack }: ConfigProps) {
     );
 }
 
-function ParakeetConfig({ params, updateParam, isMultiTrack }: ConfigProps) {
+function ParakeetConfig({ params, updateParam, isMultiTrack, availableDiarizers }: ConfigProps) {
     return (
         <div className="space-y-6">
             <Section title="Audio Context" description="Configure how much context the model uses for long audio files">
@@ -613,13 +648,13 @@ function ParakeetConfig({ params, updateParam, isMultiTrack }: ConfigProps) {
             </Section>
 
             {!isMultiTrack && (
-                <DiarizationSection id="parakeet_diarize" params={params} updateParam={updateParam} />
+                <DiarizationSection id="parakeet_diarize" params={params} updateParam={updateParam} availableDiarizers={availableDiarizers} />
             )}
         </div>
     );
 }
 
-function CanaryConfig({ params, updateParam, isMultiTrack }: ConfigProps) {
+function CanaryConfig({ params, updateParam, isMultiTrack, availableDiarizers }: ConfigProps) {
     return (
         <div className="space-y-6">
             <Section title="Language Settings">
@@ -627,7 +662,7 @@ function CanaryConfig({ params, updateParam, isMultiTrack }: ConfigProps) {
             </Section>
 
             {!isMultiTrack && (
-                <DiarizationSection id="canary_diarize" params={params} updateParam={updateParam} />
+                <DiarizationSection id="canary_diarize" params={params} updateParam={updateParam} availableDiarizers={availableDiarizers} />
             )}
         </div>
     );
@@ -686,7 +721,7 @@ function OpenAIConfig({
     );
 }
 
-function WhisperHFConfig({ params, updateParam }: ConfigProps) {
+function WhisperHFConfig({ params, updateParam, isMultiTrack, availableDiarizers }: ConfigProps) {
     return (
         <div className="space-y-6">
             <InfoBanner variant="info" title="AMD GPU / CPU — Transformers Whisper">
@@ -722,6 +757,10 @@ function WhisperHFConfig({ params, updateParam }: ConfigProps) {
                     />
                 </FormField>
             </AdvancedAccordion>
+
+            {!isMultiTrack && (
+                <DiarizationSection id="hf_whisper_diarize" params={params} updateParam={updateParam} availableDiarizers={availableDiarizers} description="Identify and separate different speakers (runs on CPU)" />
+            )}
         </div>
     );
 }
