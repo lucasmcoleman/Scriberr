@@ -38,8 +38,8 @@ func NewSortformerROCmAdapter(envPath string) *SortformerROCmAdapter {
 		Metadata:          map[string]string{"engine": "nvidia_nemo", "framework": "nemo", "backend": "rocm", "max_speakers": "4"},
 	}
 	schema := []interfaces.ParameterSchema{
-		{Name: "model", Type: "string", Required: false, Default: "nvidia/diar_sortformer_4spk-v1",
-			Options: []string{"nvidia/diar_sortformer_4spk-v1"}, Description: "Sortformer model", Group: "basic"},
+		{Name: "model", Type: "string", Required: false, Default: "nvidia/diar_streaming_sortformer_4spk-v2",
+			Options: []string{"nvidia/diar_streaming_sortformer_4spk-v2"}, Description: "Sortformer model (streaming, bounded memory)", Group: "basic"},
 	}
 	base := NewBaseAdapter("sortformer", envPath, capabilities, schema)
 	return &SortformerROCmAdapter{BaseAdapter: base, envPath: envPath}

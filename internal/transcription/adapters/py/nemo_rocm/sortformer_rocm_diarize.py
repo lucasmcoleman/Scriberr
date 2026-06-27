@@ -43,7 +43,10 @@ def _parse_entry(e):
 
 
 def diarize(audio_path, output_path, model_id):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if not torch.cuda.is_available():
+        _log("FATAL: GPU not available to torch. Refusing to run Sortformer on CPU.")
+        sys.exit(2)
+    device = "cuda"
     _log(f"device={device} | torch={torch.__version__} hip={getattr(torch.version,'hip',None)} | model={model_id}")
 
     m = SortformerEncLabelModel.from_pretrained(model_id)
@@ -83,7 +86,9 @@ def main():
     p = argparse.ArgumentParser(description="NeMo Sortformer diarization (ROCm)")
     p.add_argument("audio_path")
     p.add_argument("output_path")
-    p.add_argument("--model-id", default=os.environ.get("SORTFORMER_MODEL", "nvidia/diar_sortformer_4spk-v1"))
+    # The STREAMING v2 model bounds memory on long audio (the offline v1 loads
+    # the whole file and OOMs the APU's unified memory on hour-long meetings).
+    p.add_argument("--model-id", default=os.environ.get("SORTFORMER_MODEL", "nvidia/diar_streaming_sortformer_4spk-v2"))
     args = p.parse_args()
     if not os.path.exists(args.audio_path):
         _log(f"audio not found: {args.audio_path}")
